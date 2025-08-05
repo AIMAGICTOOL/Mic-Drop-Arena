@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mic Drop Arena - Rooms</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-G6TD1HFH68"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-G6TD1HFH68');
+    </script>
+
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6618640317883565"
+     crossorigin="anonymous"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0c0a09;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #171717; }
+        ::-webkit-scrollbar-thumb { background: #d946ef; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #e879f9; }
+        .modal-backdrop { backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); }
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slide-up { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
+        .animate-slide-up { animation: slide-up 0.4s ease-out forwards; }
+        .avatar-option.selected-avatar {
+          border-color: #d946ef !important; /* fuchsia-500 */
+          box-shadow: 0 0 15px #d946ef;
+          transform: scale(1.1);
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .animate-pulse-fast {
+            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+    </style>
+</head>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <body class="bg-stone-950 text-slate-200 antialiased">
+
+    <!-- App Wrapper -->
+    <div id="app-wrapper" class="relative min-h-screen w-full flex flex-col overflow-hidden">
+
+        <!-- Header -->
+        <header class="bg-stone-950/70 backdrop-blur-md p-3 flex justify-between items-center z-20 shadow-lg border-b border-fuchsia-500/30">
+            <a href="./index.html" class="p-2 rounded-md hover:bg-gray-800 text-slate-300 hover:text-fuchsia-400 transition-colors" title="Back to Home">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+            </a>
+            <h1 class="text-xl font-black text-cyan-400 tracking-widest uppercase" style="text-shadow: 0 0 10px theme('colors.cyan.500');">Group Rooms</h1>
+            <div id="user-actions" class="flex items-center gap-2">
+                <!-- User Profile / Login Button will be injected here -->
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col p-4 md:p-8 max-w-4xl mx-auto w-full">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-slate-300">Public Channels</h2>
+                <button id="create-room-btn" class="bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:opacity-90 transition">Create Room</button>
+            </div>
+            <div id="room-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Room items will be injected here -->
+                <p class="text-slate-500 text-center p-4 col-span-full">Loading rooms...</p>
+            </div>
+        </main>
+        
+        <!-- Modals Container -->
+        <div id="modals-container"></div>
+
+        <!-- Footer -->
+        <footer class="text-center p-4 text-xs text-slate-500 border-t border-gray-800/50 mt-auto">
+            <div class="flex justify-center gap-4 sm:gap-6">
+                <a href="#" id="privacy-link" class="hover:text-fuchsia-400 transition-colors">Privacy Policy</a>
+                <a href="#" id="terms-link" class="hover:text-fuchsia-400 transition-colors">Terms of Service</a>
+                <a href="#" id="contact-link" class="hover:text-fuchsia-400 transition-colors">Contact Us</a>
+            </div>
+            <p class="mt-2">&copy; 2025 Mic Drop Arena. All Rights Reserved.</p>
+        </footer>
+    </div>
+
+    <script type="module">
+        // Firebase Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+        import { getAuth, signOut, signInAnonymously, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+        import { getFirestore, collection, setDoc, doc, getDoc, getDocs, query, onSnapshot, serverTimestamp, addDoc, updateDoc, orderBy, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+
+        // --- GLOBAL STATE & DOM ELEMENTS ---
+        let app, auth, db;
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA9R0gkR1vYrVmBdXPKXPW0lvauRM9fAic",
+            authDomain: "roast-battle-arena-95827.firebaseapp.com",
+            projectId: "roast-battle-arena-95827",
+            storageBucket: "roast-battle-arena-95827.firebasestorage.app",
+            messagingSenderId: "1012348270876",
+            appId: "1:1012348270876:web:103e4aa45e4b05fec022d9"
+        };
+
+        const dom = {
+            userActions: document.getElementById('user-actions'),
+            modalsContainer: document.getElementById('modals-container'),
+            roomList: document.getElementById('room-list'),
+            createRoomBtn: document.getElementById('create-room-btn'),
+        };
+
+        // --- ALL FUNCTION DECLARATIONS ---
+
+        const createModal = (id, title, content, buttons, isClosable = true) => {
+            const existingModal = document.getElementById(id);
+            if(existingModal) existingModal.remove();
+
+            const closeButtonHTML = isClosable ? `<button class="absolute top-4 right-4 text-gray-500 hover:text-white text-3xl leading-none">&times;</button>` : '';
+            const modalHTML = `
+                <div id="${id}" class="fixed inset-0 bg-black/80 modal-backdrop z-[100] flex items-center justify-center p-4 animate-fade-in">
+                    <div class="bg-gray-900 rounded-lg shadow-xl w-full max-w-md p-6 border border-fuchsia-500/30 animate-slide-up relative">
+                        ${closeButtonHTML}
+                        <h3 class="text-xl font-bold mb-4 text-fuchsia-400" style="text-shadow: 0 0 5px theme('colors.fuchsia.500');">${title}</h3>
+                        <div class="text-slate-300 mb-6 max-h-[60vh] overflow-y-auto pr-2">${content}</div>
+                        <div class="flex justify-end gap-3">
+                            ${buttons.map(btn => `<button id="${btn.id}" class="${btn.classes}">${btn.text}</button>`).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+            dom.modalsContainer.insertAdjacentHTML('beforeend', modalHTML);
+            
+            const modalElement = document.getElementById(id);
+            const closeModal = () => modalElement.remove();
+
+            if (isClosable) {
+                modalElement.querySelector('.absolute.top-4').addEventListener('click', closeModal);
+            }
+
+            buttons.forEach(btn => {
+                const btnEl = document.getElementById(btn.id);
+                if (btnEl) {
+                    btnEl.addEventListener('click', () => {
+                        if (btn.onClick) btn.onClick();
+                        if(btn.closesModal !== false) {
+                            closeModal();
+                        }
+                    });
+                }
+            });
+            
+            return modalElement;
+        };
+        
+        const initializeAppLogic = async (user) => {
+            if(!user) return;
+            
+            const userAvatar = localStorage.getItem("micDropAvatar");
+            const profileIconHTML = `<img id="user-profile-icon" src="${userAvatar || 'https://placehold.co/40x40/1f2937/ffffff?text=?'}" class="w-9 h-9 rounded-full cursor-pointer border-2 border-fuchsia-500">`;
+            
+            if (user.isAnonymous) {
+                dom.userActions.innerHTML = `${profileIconHTML}<a href="./portal.html" class="bg-gradient-to-r from-fuchsia-600 to-purple-700 text-white font-bold py-1 px-3 rounded-lg text-xs hover:opacity-90 transition">Login</a>`;
+            } else {
+                dom.userActions.innerHTML = profileIconHTML;
+            }
+            
+            document.getElementById('user-profile-icon').onclick = openProfileModal;
+            listenForRooms();
+        };
+
+        const listenForRooms = () => {
+            const q = query(collection(db, "rooms"), orderBy("createdAt", "desc"));
+            onSnapshot(q, (snapshot) => {
+                if (snapshot.empty) {
+                    dom.roomList.innerHTML = `<p class="text-slate-500 text-center p-4 col-span-full">No rooms yet. Create one!</p>`;
+                    return;
+                }
+                dom.roomList.innerHTML = '';
+                snapshot.forEach(doc => {
+                    renderRoomItem(doc.id, doc.data());
+                });
+            });
+        };
+
+        const renderRoomItem = (roomId, roomData) => {
+            const roomEl = document.createElement('div');
+            roomEl.className = 'bg-gray-800/50 p-4 rounded-lg hover:bg-cyan-900/50 transition-colors border border-gray-700 flex flex-col';
+            
+            const isHot = (Date.now() - roomData.createdAt.toDate().getTime()) < 60 * 60 * 1000;
+            const hotTag = isHot ? `<span class="text-xs font-bold text-red-400 animate-pulse-fast">🔥 Hot</span>` : '';
+            const lockIcon = roomData.type === 'private' ? `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" /></svg>` : '';
+            
+            const memberCount = Math.floor(Math.random() * 20) + 1;
+            const isAdmin = auth.currentUser && auth.currentUser.uid === roomData.creatorId;
+            const deleteButtonHTML = isAdmin ? `<button class="delete-room-btn bg-red-800 hover:bg-red-700 text-white font-bold text-xs py-1 px-3 rounded-md transition">Delete</button>` : '';
+
+            roomEl.innerHTML = `
+                <div class="flex-grow">
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            ${lockIcon}
+                            <h4 class="font-bold truncate">${roomData.name}</h4>
+                        </div>
+                        ${hotTag}
+                    </div>
+                    <p class="text-xs text-slate-400 mt-1 mb-3">Created by ${roomData.creatorName}</p>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-slate-500 flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>
+                        ${memberCount} online
+                    </span>
+                    <div class="flex gap-2">
+                        ${deleteButtonHTML}
+                        <button class="join-btn bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs py-1 px-3 rounded-md transition">Join</button>
+                    </div>
+                </div>
+            `;
+            roomEl.querySelector('.join-btn').onclick = () => {
+                if (roomData.type === 'private') {
+                    promptForPassword(roomId, roomData.name, roomData.password);
+                } else {
+                    window.location.href = `./chat.html?id=${roomId}&name=${encodeURIComponent(roomData.name)}`;
+                }
+            };
+            if (isAdmin) {
+                roomEl.querySelector('.delete-room-btn').onclick = (e) => {
+                    e.stopPropagation();
+                    confirmRoomDeletion(roomId, roomData.name);
+                };
+            }
+            dom.roomList.appendChild(roomEl);
+        };
+        
+        const confirmRoomDeletion = (roomId, roomName) => {
+            createModal('confirm-delete-modal', `Delete ${roomName}?`, 
+            `<p>Are you sure you want to permanently delete this room and all of its messages? This action cannot be undone.</p>`, 
+            [
+                { id: 'btn-cancel-delete', text: 'Cancel', classes: 'bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition' },
+                { id: 'btn-confirm-delete', text: 'Delete Room', classes: 'bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition', onClick: () => deleteRoom(roomId) }
+            ]);
+        };
+
+        const deleteRoom = async (roomId) => {
+            try {
+                const messagesRef = collection(db, 'rooms', roomId, 'messages');
+                const messagesSnapshot = await getDocs(messagesRef);
+                const batch = writeBatch(db);
+                messagesSnapshot.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                await batch.commit();
+                await deleteDoc(doc(db, 'rooms', roomId));
+            } catch (error) {
+                console.error("Error deleting room:", error);
+            }
+        };
+
+        const promptForPassword = (roomId, roomName, correctPassword) => {
+            const content = `
+                <p class="mb-4 text-slate-400">This room is private. Please enter the password to join.</p>
+                <input id="room-password-input" type="password" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-2" placeholder="Enter password...">
+                <p id="password-error" class="text-red-500 text-sm mt-2 hidden"></p>
+            `;
+            createModal('password-prompt-modal', `Join "${roomName}"`, content, [
+                { id: 'btn-cancel-join', text: 'Cancel', classes: 'bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition' },
+                { id: 'btn-confirm-join', text: 'Join', classes: 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold py-2 px-4 rounded transition', onClick: () => verifyPassword(roomId, roomName, correctPassword), closesModal: false }
+            ]);
+        };
+
+        const verifyPassword = (roomId, roomName, correctPassword) => {
+            const passwordInput = document.getElementById('room-password-input');
+            const errorEl = document.getElementById('password-error');
+            const enteredPassword = passwordInput.value;
+
+            if (!enteredPassword) {
+                errorEl.textContent = 'Password cannot be empty.';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            if (enteredPassword === correctPassword) {
+                document.getElementById('password-prompt-modal').remove();
+                window.location.href = `./chat.html?id=${roomId}&name=${encodeURIComponent(roomName)}`;
+            } else {
+                errorEl.textContent = 'Incorrect password. Please try again.';
+                errorEl.classList.remove('hidden');
+            }
+        };
+
+        const showCreateRoomModal = () => {
+            const content = `
+                <div class="space-y-4">
+                    <div>
+                        <label for="new-room-name" class="block text-sm font-medium text-slate-400">Room Name</label>
+                        <input id="new-room-name" type="text" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg p-2 focus:ring-cyan-500 focus:border-cyan-500" placeholder="e.g., General Chat">
+                    </div>
+                    <div class="flex items-center">
+                        <input id="private-room-checkbox" type="checkbox" class="h-4 w-4 rounded border-gray-600 bg-gray-700 text-cyan-600 focus:ring-cyan-500">
+                        <label for="private-room-checkbox" class="ml-2 block text-sm text-slate-300">Private Room (Password Protected)</label>
+                    </div>
+                    <div id="password-field-container" class="hidden">
+                        <label for="new-room-password" class="block text-sm font-medium text-slate-400">Password</label>
+                        <input id="new-room-password" type="password" class="mt-1 w-full bg-gray-800 border border-gray-700 rounded-lg p-2 focus:ring-cyan-500 focus:border-cyan-500">
+                    </div>
+                </div>
+            `;
+            const modal = createModal('create-room-modal', 'Create New Room', content, [
+                { id: 'btn-cancel-create', text: 'Cancel', classes: 'bg-gray-800 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition' },
+                { id: 'btn-confirm-create', text: 'Create', classes: 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold py-2 px-4 rounded transition', onClick: createRoom, closesModal: false }
+            ]);
+
+            const checkbox = document.getElementById('private-room-checkbox');
+            const passwordContainer = document.getElementById('password-field-container');
+            checkbox.addEventListener('change', () => {
+                passwordContainer.classList.toggle('hidden', !checkbox.checked);
+            });
+        };
+
+        const createRoom = async () => {
+            const roomNameInput = document.getElementById('new-room-name');
+            const roomName = roomNameInput.value.trim();
+            if (!roomName) {
+                roomNameInput.classList.add('border-red-500');
+                return;
+            }
+
+            const isPrivate = document.getElementById('private-room-checkbox').checked;
+            const passwordInput = document.getElementById('new-room-password');
+            const password = passwordInput.value;
+
+            if (isPrivate && !password) {
+                passwordInput.classList.add('border-red-500');
+                return;
+            }
+
+            const user = auth.currentUser;
+            if (!user) return;
+
+            try {
+                const roomData = {
+                    name: roomName,
+                    creatorId: user.uid,
+                    creatorName: localStorage.getItem("micDropUsername") || "Anonymous",
+                    createdAt: serverTimestamp(),
+                    type: isPrivate ? 'private' : 'public',
+                };
+                if (isPrivate) {
+                    roomData.password = password;
+                }
+
+                await addDoc(collection(db, 'rooms'), roomData);
+                const modal = document.getElementById('create-room-modal');
+                if (modal) modal.remove();
+            } catch (error) {
+                console.error("Error creating room:", error);
+            }
+        };
+
+        // --- User Profile and Auth Functions ---
+        const handleGoogleLogin = () => {
+            const provider = new GoogleAuthProvider();
+            signInWithPopup(auth, provider)
+                .then(result => {
+                    const user = result.user;
+                    localStorage.setItem("micDropUsername", user.displayName);
+                    localStorage.setItem("micDropAvatar", user.photoURL);
+                    window.location.reload();
+                })
+                .catch(err => console.error("Google Sign-In Error:", err.message));
+        };
+
+        const openProfileModal = async () => {
+             const user = auth.currentUser;
+             if (!user) return;
+             const userDocRef = doc(db, "users", user.uid);
+             const userDoc = await getDoc(userDocRef);
+             const userData = userDoc.exists() ? userDoc.data() : {};
+
+             createModal('edit-profile', 'Edit Your Profile', `
+                 <div class="space-y-4">
+                     <div>
+                         <label class="text-sm font-medium text-slate-400">Username</label>
+                         <input id="profileUsernameInput" type="text" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 mt-1 focus:ring-fuchsia-500 focus:border-fuchsia-500" value="${localStorage.getItem('micDropUsername') || ''}">
+                     </div>
+                      <div>
+                         <label class="text-sm font-medium text-slate-400">Bio</label>
+                         <textarea id="profileBioInput" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 mt-1 h-24 focus:ring-fuchsia-500 focus:border-fuchsia-500">${userData.bio || ''}</textarea>
+                     </div>
+                     <div>
+                         <label class="text-sm font-medium text-slate-400">Choose New Avatar</label>
+                         <div id="editAvatarGrid" class="grid grid-cols-5 gap-3 mt-2 p-2 bg-black/20 rounded-lg max-h-48 overflow-y-auto"></div>
+                     </div>
+                 </div>
+             `, [
+                 { id: 'btn-cancel-profile', text: 'Cancel', classes: 'bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition' },
+                 { id: 'btn-save-profile', text: 'Save', classes: 'bg-gradient-to-r from-fuchsia-600 to-purple-700 text-white font-bold py-2 px-4 rounded transition', onClick: saveProfile }
+             ]);
+             populateAvatarGrid('editAvatarGrid');
+        };
+
+        const populateAvatarGrid = (gridId) => {
+            const grid = document.getElementById(gridId);
+            if (!grid) return;
+            grid.innerHTML = '<p class="col-span-full text-center">Loading avatars...</p>';
+            
+            const avatarStyles = ["adventurer", "bottts", "micah", "initials", "fun-emoji", "pixel-art", "lorelei", "identicon", "miniavs", "open-peeps", "personas", "rings", "shapes", "thumbs"];
+            let avatarsHTML = '';
+            for(let i = 0; i < 50; i++) {
+                const style = avatarStyles[Math.floor(Math.random() * avatarStyles.length)];
+                const seed = Math.random().toString(36).substring(2, 15);
+                const avatarUrl = `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}`;
+                avatarsHTML += `<img src="${avatarUrl}" class="avatar-option w-full aspect-square rounded-full cursor-pointer transition-all duration-200 border-2 border-transparent hover:border-fuchsia-500">`;
+            }
+            grid.innerHTML = avatarsHTML;
+
+            grid.addEventListener('click', (e) => {
+                if (e.target.classList.contains('avatar-option')) {
+                    grid.querySelectorAll('.avatar-option').forEach(el => el.classList.remove('selected-avatar'));
+                    e.target.classList.add('selected-avatar');
+                }
+            });
+        };
+        
+        const saveProfile = async () => {
+            const user = auth.currentUser;
+            if (!user) return;
+            
+            const newUsername = document.getElementById('profileUsernameInput').value.trim();
+            const newBio = document.getElementById('profileBioInput').value.trim();
+            const selectedAvatar = document.querySelector('#editAvatarGrid .selected-avatar');
+            const newAvatar = selectedAvatar ? selectedAvatar.src : localStorage.getItem('micDropAvatar');
+
+            if (!newUsername) {
+                createModal('error-modal', 'Error', 'Username cannot be empty.', [{id: 'ok-btn', text: 'OK', classes: 'bg-gray-700 p-2 rounded'}]);
+                return;
+            }
+
+            localStorage.setItem('micDropUsername', newUsername);
+            localStorage.setItem('micDropAvatar', newAvatar);
+            
+            const userDocRef = doc(db, "users", user.uid);
+            await updateDoc(userDocRef, {
+                username: newUsername,
+                avatar: newAvatar,
+                bio: newBio
+            });
+
+            if (document.getElementById('user-profile-icon')) {
+                document.getElementById('user-profile-icon').src = newAvatar;
+            }
+        };
+
+        const showInfoModal = (page) => {
+            let title = '';
+            let content = '';
+
+            if (page === 'privacy') {
+                title = 'Privacy Policy';
+                content = `
+                    <div class="text-left space-y-4 text-slate-300 text-sm">
+                        <p><strong>Last Updated:</strong> July 25, 2025</p>
+                        <p>Welcome to Mic Drop Arena ("we," "our," or "us"). We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our web application (the "Service").</p>
+                        <p>Please read this privacy policy carefully. If you do not agree with the terms of this privacy policy, please do not access the service.</p>
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">Information We Collect</h4>
+                        <p>We may collect information about you in a variety of ways, including: personal data you provide (username, avatar, messages), and derivative data collected automatically (IP address, browser type).</p>
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">Use of Your Information</h4>
+                        <p>We use your information to operate and maintain the Service, create and manage your account, enable user-to-user communications, and serve personalized advertisements through Google AdSense.</p>
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">Advertising and Google AdSense</h4>
+                        <p>We use Google AdSense to display ads. Google uses cookies to serve ads based on a user's prior visits. You may opt out of personalized advertising by visiting Google's Ads Settings.</p>
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">Contact Us</h4>
+                        <p>If you have any questions about this Privacy Policy, please contact us at: <a href="mailto:contact@roastbattlearena.com" class="text-cyan-400 hover:underline">contact@roastbattlearena.com</a></p>
+                    </div>
+                `;
+            } else if (page === 'terms') {
+                title = 'Terms of Service';
+                content = `
+                    <div class="text-left space-y-4 text-slate-300 text-sm">
+                        <p><strong>Last Updated:</strong> July 25, 2025</p>
+                        <p>By accessing or using Mic Drop Arena ("the Service"), you agree to be bound by these Terms of Service.</p>
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">User Conduct</h4>
+                        <p>You are solely responsible for your conduct and any content you post. You agree not to post content that is unlawful, harmful, harassing, or otherwise objectionable. We reserve the right to remove content and terminate accounts for any violation.</p>
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">Disclaimers</h4>
+                        <p>The Service is provided "AS IS". We disclaim all warranties and will not be liable for any damages arising from your use of the Service.</p>
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">Contact Us</h4>
+                        <p>If you have any questions about these Terms, please contact us at: <a href="mailto:contact@roastbattlearena.com" class="text-cyan-400 hover:underline">contact@roastbattlearena.com</a></p>
+                    </div>
+                `;
+            } else if (page === 'contact') {
+                title = 'Contact Us';
+                content = `
+                    <div class="text-left space-y-4 text-slate-300 text-sm">
+                        <p>For support, inquiries, or any other questions, please email us directly at: <a href="mailto:contact@roastbattlearena.com" class="text-cyan-400 hover:underline">contact@roastbattlearena.com</a></p>
+                    </div>
+                `;
+            }
+
+            createModal(`${page}-modal`, title, content, [{ id: `btn-close-${page}`, text: 'Close', classes: 'bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition' }]);
+        };
+
+
+        // --- EVENT LISTENERS ---
+        dom.createRoomBtn.addEventListener('click', showCreateRoomModal);
+        
+        document.getElementById('privacy-link').addEventListener('click', (e) => {
+            e.preventDefault();
+            showInfoModal('privacy');
+        });
+        document.getElementById('terms-link').addEventListener('click', (e) => {
+            e.preventDefault();
+            showInfoModal('terms');
+        });
+        document.getElementById('contact-link').addEventListener('click', (e) => {
+            e.preventDefault();
+            showInfoModal('contact');
+        });
+
+        // --- INITIALIZATION ---
+        const initializeFirebase = () => {
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                return true;
+            } catch (e) {
+                console.error("Firebase initialization failed:", e);
+                return false;
+            }
+        };
+
+        const main = () => {
+            if (!initializeFirebase()) return;
+            
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    initializeAppLogic(user);
+                } else {
+                    try {
+                        await signInAnonymously(auth);
+                    } catch (error) {
+                        console.error("Anonymous sign-in failed:", error);
+                    }
+                }
+            });
+        };
+
+        main();
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mic Drop Arena - Battle!</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    
+    <!-- AdSense and Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-G6TD1HFH68"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-G6TD1HFH68');
+    </script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6618640317883565" crossorigin="anonymous"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0c0a09; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #171717; }
+        ::-webkit-scrollbar-thumb { background: #d946ef; border-radius: 10px; }
+        #chat { background-image: radial-gradient(theme('colors.fuchsia.500 / 0.1') 1px, transparent 0); background-size: 25px 25px; }
+        .message-content { word-break: break-word; }
+        #sidebar { transition: transform 0.3s ease-in-out; }
+        .modal-backdrop { backdrop-filter: blur(5px); }
+        .avatar-option.selected-avatar {
+          border-color: #d946ef !important;
+          box-shadow: 0 0 15px #d946ef;
+          transform: scale(1.1);
+        }
+    </style>
+</head>
+<body class="bg-stone-950 text-slate-200 antialiased">
+
+    <!-- App Wrapper -->
+    <div id="app-wrapper" class="relative min-h-screen w-full flex flex-col overflow-hidden">
+
+        <!-- Header -->
+        <header class="bg-stone-950/70 backdrop-blur-md p-3 flex justify-between items-center z-20 shadow-lg border-b border-fuchsia-500/30">
+            <div id="opponent-info" class="flex items-center gap-3 cursor-pointer" onclick="window.viewOpponentProfile()">
+                <img id="opponent-avatar" src="https://placehold.co/40x40/1f2937/ffffff?text=?" class="w-10 h-10 rounded-full border-2 border-cyan-500">
+                <div>
+                    <h2 id="opponent-name" class="font-bold text-cyan-400">Loading...</h2>
+                </div>
+            </div>
+            <div id="user-actions" class="flex items-center gap-2">
+                 <!-- All user action buttons will be injected here by JS -->
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col p-2 sm:p-4 overflow-hidden max-w-2xl mx-auto w-full">
+            <!-- Chat Area -->
+            <div id="chat" class="flex-1 bg-black/30 rounded-lg p-4 overflow-y-auto mb-2 flex flex-col gap-4 border border-gray-800">
+                <!-- Messages will appear here -->
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex gap-2 mb-2">
+                 <button id="leaveBtn" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg transition">Leave Battle</button>
+            </div>
+
+            <!-- Message Input -->
+            <div class="flex gap-2">
+                <input type="text" id="messageInput" placeholder="Drop your killer line..." class="flex-1 bg-gray-900 border border-gray-700 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-fuchsia-500" disabled>
+                <button id="sendBtn" class="bg-gradient-to-r from-fuchsia-600 to-purple-700 text-white font-bold py-3 px-5 rounded-lg hover:opacity-90 transition" disabled>Fire!</button>
+            </div>
+        </main>
+        
+        <!-- Sidebar / Friends List -->
+        <div id="sidebar-backdrop" class="fixed inset-0 bg-black/60 z-30 hidden"></div>
+        <aside id="sidebar" class="fixed top-0 left-0 h-full w-72 bg-stone-900 shadow-2xl z-40 transform -translate-x-full flex flex-col border-r-2 border-fuchsia-500/50">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center">
+                <h2 class="text-lg font-bold text-fuchsia-500">Mic Drop Friends</h2>
+                <button id="sidebar-close" class="p-2 rounded-md hover:bg-gray-800 text-3xl leading-none">&times;</button>
+            </div>
+            <div id="friends-list" class="flex-1 overflow-y-auto p-2"></div>
+        </aside>
+
+        <div id="modals-container"></div>
+    </div>
+
+    <script type="module">
+        // Firebase Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInAnonymously, signInWithPopup, GoogleAuthProvider, signOut } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+        import { getFirestore, collection, doc, onSnapshot, serverTimestamp, addDoc, orderBy, query, getDoc, updateDoc, setDoc, where, getDocs, deleteDoc, writeBatch, limit } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+
+        // --- GLOBAL STATE & DOM ELEMENTS ---
+        let app, auth, db;
+        let currentSessionId = null;
+        let opponentInfo = null;
+        let messagesUnsubscribe = null;
+        let friendRequests = [];
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA9R0gkR1vYrVmBdXPKXPW0lvauRM9fAic",
+            authDomain: "roast-battle-arena-95827.firebaseapp.com",
+            projectId: "roast-battle-arena-95827",
+            storageBucket: "roast-battle-arena-95827.firebasestorage.app",
+            messagingSenderId: "1012348270876",
+            appId: "1:1012348270876:web:103e4aa45e4b05fec022d9"
+        };
+
+        const dom = {
+            chat: document.getElementById('chat'),
+            messageInput: document.getElementById('messageInput'),
+            sendBtn: document.getElementById('sendBtn'),
+            leaveBtn: document.getElementById('leaveBtn'),
+            opponentAvatar: document.getElementById('opponent-avatar'),
+            opponentName: document.getElementById('opponent-name'),
+            userActions: document.getElementById('user-actions'),
+            modalsContainer: document.getElementById('modals-container'),
+            sidebar: document.getElementById('sidebar'),
+            sidebarBackdrop: document.getElementById('sidebar-backdrop'),
+            friendsList: document.getElementById('friends-list'),
+        };
+
+        // --- MODAL & UI HELPERS ---
+        const createModal = (id, title, content, buttons = [], isClosable = true) => {
+            const existingModal = document.getElementById(id);
+            if(existingModal) existingModal.remove();
+
+            const closeButtonHTML = isClosable ? `<button class="absolute top-4 right-4 text-gray-500 hover:text-white text-3xl leading-none">&times;</button>` : '';
+            const modalHTML = `
+                <div id="${id}" class="fixed inset-0 bg-black/80 modal-backdrop z-[100] flex items-center justify-center p-4">
+                    <div class="bg-gray-900 rounded-lg shadow-xl w-full max-w-lg p-6 border border-fuchsia-500/30 relative">
+                        ${closeButtonHTML}
+                        <h3 class="text-xl font-bold mb-4 text-fuchsia-400">${title}</h3>
+                        <div class="text-slate-300 mb-6 max-h-[60vh] overflow-y-auto pr-2">${content}</div>
+                        <div class="flex justify-end gap-3">
+                            ${buttons.map(btn => `<button id="${btn.id}" class="${btn.classes}">${btn.text}</button>`).join('')}
+                        </div>
+                    </div>
+                </div>`;
+            dom.modalsContainer.insertAdjacentHTML('beforeend', modalHTML);
+            
+            const modalElement = document.getElementById(id);
+            const closeModal = () => modalElement.remove();
+
+            if (isClosable) {
+                modalElement.querySelector('.absolute.top-4').addEventListener('click', closeModal);
+            }
+
+            buttons.forEach(btn => {
+                document.getElementById(btn.id)?.addEventListener('click', () => {
+                    if (btn.onClick) btn.onClick();
+                    if(btn.closesModal !== false) closeModal();
+                });
+            });
+            return modalElement;
+        };
+
+        // --- BATTLE CHAT LOGIC ---
+        const displayMessage = (msgData) => {
+            const messageEl = document.createElement('div');
+            const user = auth.currentUser;
+            if (!user) return;
+            const isYou = msgData.senderId === user.uid;
+            messageEl.className = `flex items-start gap-3 ${isYou ? 'flex-row-reverse' : ''}`;
+            messageEl.innerHTML = `
+                <img src="${msgData.senderAvatar}" class="w-10 h-10 rounded-full object-cover border-2 ${isYou ? 'border-fuchsia-500' : 'border-cyan-500'}">
+                <div class="flex flex-col ${isYou ? 'items-end' : 'items-start'}">
+                    <span class="font-bold text-sm mb-1 ${isYou ? 'text-fuchsia-400' : 'text-cyan-400'}">${msgData.senderName}</span>
+                    <div class="bg-gray-800/70 p-3 rounded-lg max-w-xs sm:max-w-md message-content">${msgData.text}</div>
+                </div>`;
+            dom.chat.appendChild(messageEl);
+            dom.chat.scrollTop = dom.chat.scrollHeight;
+        };
+
+        const sendMessage = async () => {
+            const text = dom.messageInput.value.trim();
+            if (!text || !currentSessionId) return;
+            const user = auth.currentUser;
+            if (!user) return;
+            const messageData = {
+                text: text,
+                senderId: user.uid,
+                senderName: localStorage.getItem("micDropUsername") || "Anonymous",
+                senderAvatar: localStorage.getItem("micDropAvatar") || 'https://placehold.co/40x40/1f2937/ffffff?text=?',
+                timestamp: serverTimestamp(),
+            };
+            try {
+                const messagesRef = collection(db, "sessions", currentSessionId, "messages");
+                await addDoc(messagesRef, messageData);
+                dom.messageInput.value = "";
+            } catch (error) {
+                console.error("Error sending message:", error);
+            }
+        };
+
+        const joinSession = async (sessionId, userId) => {
+            currentSessionId = sessionId;
+            const sessionRef = doc(db, "sessions", sessionId);
+            const sessionDoc = await getDoc(sessionRef);
+
+            if (!sessionDoc.exists()) {
+                alert("This battle session does not exist or has ended.");
+                window.location.href = './portal.html';
+                return;
+            }
+
+            const sessionData = sessionDoc.data();
+            const opponentId = sessionData.participants.find(p => p !== userId);
+            opponentInfo = { ...sessionData.participantInfo[opponentId], uid: opponentId };
+
+            dom.opponentAvatar.src = opponentInfo.avatar;
+            dom.opponentName.textContent = opponentInfo.username;
+            dom.messageInput.disabled = false;
+            dom.sendBtn.disabled = false;
+
+            const messagesRef = collection(db, "sessions", sessionId, "messages");
+            const q = query(messagesRef, orderBy('timestamp', 'asc'));
+            messagesUnsubscribe = onSnapshot(q, (snapshot) => {
+                snapshot.docChanges().forEach(change => {
+                    if (change.type === 'added') displayMessage(change.doc.data());
+                });
+            });
+        };
+        
+        // --- SIDEBAR, FRIENDS, AND PROFILE LOGIC ---
+        const toggleSidebar = (show) => {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            if (show) {
+                sidebar.classList.remove('-translate-x-full');
+                backdrop.classList.remove('hidden');
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                backdrop.classList.add('hidden');
+            }
+        };
+
+        const listenForFriends = (userId) => {
+            const q = query(collection(db, "friendships"), where("users", "array-contains", userId), where("status", "==", "friends"));
+            onSnapshot(q, (snapshot) => {
+                const friendsList = document.getElementById('friends-list');
+                if (snapshot.empty) {
+                    friendsList.innerHTML = `<p class="text-slate-500 text-center p-4">No friends yet!</p>`;
+                } else {
+                    friendsList.innerHTML = '';
+                    snapshot.forEach(docSnap => {
+                        const data = docSnap.data();
+                        const otherUserId = data.users.find(uid => uid !== userId);
+                        onSnapshot(doc(db, "users", otherUserId), (userDoc) => {
+                            if (userDoc.exists()) renderFriendItem(userDoc.data());
+                        });
+                    });
+                }
+            });
+        };
+
+        const renderFriendItem = (friend) => {
+            const friendsList = document.getElementById('friends-list');
+            const friendEl = document.createElement('div');
+            friendEl.className = 'flex items-center gap-3 p-2 rounded-lg hover:bg-gray-800/50 cursor-pointer';
+            friendEl.innerHTML = `
+                <div class="relative"><img src="${friend.avatar}" class="w-10 h-10 rounded-full"><span class="absolute bottom-0 right-0 w-3 h-3 ${friend.online ? 'bg-green-400' : 'bg-slate-500'} border-2 border-stone-900 rounded-full"></span></div>
+                <span class="font-medium flex-1 truncate">${friend.username}</span>`;
+            friendsList.appendChild(friendEl);
+        };
+
+        window.viewOpponentProfile = () => {
+            if (opponentInfo) {
+                alert(`Opponent: ${opponentInfo.username}`);
+            }
+        };
+        
+        const showServerSelectionModal = () => {
+            const content = `<p>Server selection is not available during a battle. Please return to the main portal to change servers.</p>`;
+            createModal('server-select-modal', 'Select Server', content, [{ id: 'btn-close-server-select', text: 'Close', classes: 'bg-gray-800 p-2 rounded' }]);
+        };
+
+        const toggleHistory = async () => {
+            const user = auth.currentUser;
+            if (!user) return;
+            const q = query(collection(db, 'roastHistory'), where("participants", "array-contains", user.uid), orderBy("timestamp", "desc"), limit(15));
+            const snapshot = await getDocs(q);
+            let historyHTML = '<div class="space-y-3 max-h-96 overflow-y-auto p-1">';
+            if (snapshot.empty) {
+                historyHTML += '<p class="text-slate-500">No battle history found.</p>';
+            } else {
+                snapshot.forEach(docSnap => {
+                    const battle = docSnap.data();
+                    const opponent = battle.participantDetails.find(p => p.uid !== user.uid);
+                    if (!opponent) return;
+                    const won = battle.winner === user.uid;
+                    historyHTML += `<div class="flex items-center gap-3 p-2 rounded-lg bg-gray-800/50">...</div>`; // Simplified for brevity
+                });
+            }
+            historyHTML += '</div>';
+            createModal('history-modal', 'Battle History', historyHTML, [{ id: 'btn-close-history', text: 'Close', classes: 'bg-gray-700 p-2 rounded' }]);
+        };
+        
+        const showFriendRequests = () => {
+            let requestsHTML = '<div class="space-y-3 max-h-96 overflow-y-auto p-1">';
+            if (friendRequests.length === 0) {
+                requestsHTML += '<p class="text-slate-500">No new friend requests.</p>';
+            } else {
+                // ... logic to display requests
+            }
+            requestsHTML += '</div>';
+            createModal('requests-modal', 'Friend Requests', requestsHTML, [{ id: 'btn-close-requests', text: 'Close', classes: 'bg-gray-700 p-2 rounded' }]);
+        };
+
+        const handleGoogleLogin = () => {
+            const provider = new GoogleAuthProvider();
+            signInWithPopup(auth, provider)
+                .then(result => {
+                    const user = result.user;
+                    localStorage.setItem("micDropUsername", user.displayName);
+                    localStorage.setItem("micDropAvatar", user.photoURL);
+                    window.location.reload();
+                })
+                .catch(err => console.error("Google Sign-In Error:", err.message));
+        };
+        
+        // --- INITIALIZATION & AUTH ---
+        const initializeAppLogic = (user) => {
+            const userAvatar = localStorage.getItem("micDropAvatar") || 'https://placehold.co/40x40/1f2937/ffffff?text=?';
+            const sidebarBtnHTML = `<button id="sidebar-toggle" class="p-2 rounded-md hover:bg-gray-800" title="Friends List"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" /></svg></button>`;
+            const serverBtnHTML = `<button id="server-select-btn" class="p-2 rounded-md hover:bg-gray-800" title="Change Server"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2h8a2 2 0 002-2v-1a2 2 0 012-2h1.945M7.737 16.95l.007-.005a2 2 0 012.828 0l1.414 1.414a2 2 0 010 2.828l-.007.005M11 21h2m-1-16a1 1 0 110-2 1 1 0 010 2z" /></svg></button>`;
+            const historyBtnHTML = `<button id="history-btn" class="p-2 rounded-md hover:bg-gray-800" title="Battle History"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></button>`;
+            const notificationsBtnHTML = `<button id="notifications-btn" class="relative p-2 rounded-md hover:bg-gray-800" title="Notifications"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg><span id="notification-dot" class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full hidden"></span></button>`;
+            const profileIconHTML = `<img id="user-avatar-main" src="${userAvatar}" class="w-10 h-10 rounded-full cursor-pointer border-2 border-fuchsia-500">`;
+            
+            dom.userActions.innerHTML = `${sidebarBtnHTML}${serverBtnHTML}${historyBtnHTML}${notificationsBtnHTML}${profileIconHTML}`;
+        };
+
+        const initializeFirebase = () => {
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                return true;
+            } catch (e) { console.error("Firebase initialization failed:", e); return false; }
+        };
+
+        const main = () => {
+            if (!initializeFirebase()) return;
+
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    initializeAppLogic(user);
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const sessionId = urlParams.get('sessionId');
+                    if (!sessionId) {
+                        alert("No session ID found.");
+                        window.location.href = './portal.html';
+                        return;
+                    }
+                    joinSession(sessionId, user.uid);
+                    listenForFriends(user.uid);
+                } else {
+                    signInAnonymously(auth);
+                }
+            });
+
+            dom.sendBtn.addEventListener('click', sendMessage);
+            dom.messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+            dom.leaveBtn.addEventListener('click', () => {
+                if (messagesUnsubscribe) messagesUnsubscribe();
+                window.location.href = './portal.html';
+            });
+            
+            document.body.addEventListener('click', (e) => {
+                const user = auth.currentUser;
+                if (!user) return;
+
+                if (e.target.closest('#sidebar-toggle')) toggleSidebar(true);
+                if (e.target.closest('#sidebar-close')) toggleSidebar(false);
+                if (e.target.closest('#sidebar-backdrop')) toggleSidebar(false);
+                if (e.target.closest('#server-select-btn')) showServerSelectionModal();
+                if (e.target.closest('#history-btn')) toggleHistory();
+                if (e.target.closest('#notifications-btn')) showFriendRequests();
+                if (e.target.closest('#user-avatar-main')) {
+                    if (user.isAnonymous) {
+                        handleGoogleLogin();
+                    } else {
+                        createModal('profile-actions', 'My Account', `<p>What would you like to do?</p>`, [
+                            { id: 'btn-edit-profile', text: 'Edit Profile', classes: 'bg-gray-700 p-2 rounded' /* onClick: openProfileModal */ },
+                            { id: 'btn-logout', text: 'Logout', classes: 'bg-red-600 p-2 rounded', onClick: () => signOut(auth).then(() => window.location.href = './index.html') }
+                        ]);
+                    }
+                }
+            });
+        };
+
+        main();
+    </script>
+</body>
+</html>
+

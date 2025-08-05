@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mic Drop Arena - Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-G6TD1HFH68"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-G6TD1HFH68');
+    </script>
+    
+    <!-- Google AdSense Script -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6618640317883565"
+     crossorigin="anonymous"></script>
+
+    <style>
+        html, body {
+            height: 100%;
+            overflow: hidden; /* Prevents the whole page from scrolling on mobile */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0c0a09;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #171717; }
+        ::-webkit-scrollbar-thumb { background: #d946ef; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #e879f9; }
+        .chat-bg { background-image: radial-gradient(theme('colors.cyan.500 / 0.05') 1px, transparent 0); background-size: 25px 25px; }
+        
+        /* --- Animated Backgrounds --- */
+        @keyframes twinkle {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 0.8; }
+        }
+        .bg-anim-stars {
+            background-color: #0c0a09;
+            overflow: hidden;
+        }
+        .star {
+            position: absolute;
+            background-color: white;
+            border-radius: 50%;
+            animation: twinkle 4s infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0px); }
+        }
+        .bg-anim-orbs {
+            background-color: #0c0a09;
+            overflow: hidden;
+        }
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            opacity: 0.1;
+            filter: blur(5px);
+            animation: float 6s ease-in-out infinite;
+        }
+        .orb:nth-child(1) { width: 80px; height: 80px; background: #a21caf; left: 10%; top: 20%; animation-delay: 0s; }
+        .orb:nth-child(2) { width: 150px; height: 150px; background: #0891b2; left: 60%; top: 70%; animation-delay: 2s; }
+        .orb:nth-child(3) { width: 50px; height: 50px; background: #be185d; left: 80%; top: 10%; animation-delay: 4s; }
+        
+        /* Sidebar transition */
+        #sidebar {
+            transition: transform 0.3s ease-in-out;
+        }
+        .modal-backdrop { backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); }
+        .avatar-option.selected-avatar {
+          border-color: #d946ef !important; /* fuchsia-500 */
+          box-shadow: 0 0 15px #d946ef;
+          transform: scale(1.1);
+        }
+        .message-container:hover .reply-btn {
+            opacity: 1;
+        }
+        .message-content {
+            word-break: break-word;
+        }
+        #friendChatContainer.minimized #friendChatMessages,
+        #friendChatContainer.minimized #friendChatInputContainer,
+        #friendChatContainer.minimized #friend-picker-panel {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-stone-950 text-slate-200 antialiased">
+
+    <!-- App Wrapper -->
+    <div id="app-wrapper" class="relative h-full w-full flex flex-col overflow-hidden">
+        <div id="bg-animation-container" class="absolute inset-0 z-0"></div>
+        <!-- Header -->
+        <header class="bg-stone-950/70 backdrop-blur-md p-3 flex justify-between items-center z-20 shadow-lg border-b border-cyan-500/30 flex-shrink-0">
+            <div class="flex items-center gap-2">
+                <a href="./rooms.html" class="p-2 rounded-md hover:bg-gray-800 text-slate-300 hover:text-cyan-400 transition-colors" title="Back to Rooms">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                </a>
+                <button id="sidebar-toggle" class="p-2 rounded-md hover:bg-gray-800 text-slate-300 hover:text-fuchsia-400 transition-colors" title="Friends List">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21v-2a4 4 0 00-4-4H9a4 4 0 00-4 4v2" /></svg>
+                </button>
+            </div>
+            <h1 id="room-name-header" class="text-lg sm:text-xl font-black text-cyan-400 tracking-widest uppercase truncate" style="text-shadow: 0 0 10px theme('colors.cyan.500');">Loading...</h1>
+            <div id="user-actions" class="flex items-center gap-2">
+                <!-- User Profile Icon will be injected here -->
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col p-2 sm:p-4 overflow-hidden max-w-4xl mx-auto w-full z-10 min-h-0">
+            <div class="flex-1 flex flex-col bg-stone-950 rounded-lg border-2 border-gray-800 overflow-hidden">
+                <!-- Chat Messages -->
+                <div id="chat" class="flex-1 chat-bg p-4 overflow-y-auto flex flex-col gap-4">
+                    <!-- Messages will appear here -->
+                </div>
+
+                <!-- UNIFIED PICKER PANEL -->
+                <div id="picker-panel" class="bg-gray-800 border-t-2 border-gray-700 flex-shrink-0" style="display: none;">
+                    <!-- Tabs -->
+                    <div id="picker-tabs" class="flex border-b border-gray-700">
+                        <button data-tab="emoji" class="picker-tab-btn flex-1 p-2 text-center font-semibold text-slate-300 border-b-2 border-fuchsia-500">Emojis</button>
+                        <button data-tab="sticker" class="picker-tab-btn flex-1 p-2 text-center font-semibold text-slate-400 border-b-2 border-transparent hover:border-fuchsia-400 transition-colors">Stickers</button>
+                        <button data-tab="gif" class="picker-tab-btn flex-1 p-2 text-center font-semibold text-slate-400 border-b-2 border-transparent hover:border-fuchsia-400 transition-colors">GIFs</button>
+                    </div>
+                    <!-- Content -->
+                    <div id="picker-content" class="relative">
+                        <!-- Emoji Panel -->
+                        <div id="emoji-panel" class="picker-content-panel p-2 grid grid-cols-8 sm:grid-cols-12 gap-1 max-h-48 overflow-y-auto">
+                            <!-- Emojis will be populated here -->
+                        </div>
+                        <!-- Sticker Panel -->
+                        <div id="sticker-panel" class="picker-content-panel p-2 grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-48 overflow-y-auto" style="display: none;">
+                            <!-- Stickers will be populated here -->
+                        </div>
+                        <!-- GIF Panel -->
+                        <div id="gif-panel" class="picker-content-panel p-2 flex flex-col max-h-60" style="display: none;">
+                            <input type="text" id="gif-search-input" placeholder="Search GIPHY" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 mb-2 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                            <div id="gif-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 flex-1 overflow-y-auto">
+                                <!-- GIFs will be populated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Message Input -->
+                <div class="p-2 sm:p-4 bg-gray-900/80 flex-shrink-0 border-t-2 border-gray-800">
+                    <div id="reply-banner" class="hidden items-center justify-between bg-gray-700 p-2 rounded-t-lg text-sm">
+                        <div class="flex flex-col overflow-hidden">
+                            <span id="reply-banner-name" class="font-bold text-cyan-300"></span>
+                            <p id="reply-banner-text" class="text-slate-400 truncate"></p>
+                        </div>
+                        <button id="cancel-reply-btn" class="p-1 flex-shrink-0 ml-2">&times;</button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="relative flex-1">
+                            <div class="absolute left-3 top-1/2 -translate-y-1/2 flex gap-1">
+                                <button id="media-btn" class="p-2 text-slate-400 hover:text-cyan-400 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                                </button>
+                            </div>
+                            <input type="text" id="messageInput" placeholder="Type your message..." class="w-full bg-gray-800 border border-gray-700 rounded-lg py-3 pr-14 pl-14 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
+                            <div class="absolute right-3 top-1/2 -translate-y-1/2 flex gap-1">
+                                 <button id="picker-btn" class="p-2 text-slate-400 hover:text-cyan-400 transition-colors">😊</button>
+                            </div>
+                        </div>
+                        <button id="sendBtn" class="bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold py-3 px-5 rounded-lg hover:opacity-90 transition">Send</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Sidebar / Friends List -->
+        <div id="sidebar-backdrop" class="fixed inset-0 bg-black/60 z-30 hidden"></div>
+        <aside id="sidebar" class="fixed top-0 left-0 h-full w-72 bg-stone-900 shadow-2xl z-40 transform -translate-x-full flex flex-col border-r-2 border-fuchsia-500/50">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center">
+                <h2 class="text-lg font-bold text-fuchsia-500">Friends</h2>
+                <button id="sidebar-close" class="p-2 rounded-md hover:bg-gray-800 text-3xl leading-none">&times;</button>
+            </div>
+            <div id="friends-list" class="flex-1 overflow-y-auto p-2"></div>
+        </aside>
+
+        <!-- Friend Chat Popup -->
+        <div id="friendChatContainer" class="fixed bottom-0 right-4 w-[calc(100%-2rem)] max-w-sm bg-gray-900 rounded-t-lg shadow-2xl z-50 flex flex-col transition-transform translate-y-full border-t-2 border-x-2 border-cyan-500/50">
+            <div id="friendChatHeader" class="flex items-center justify-between p-2 bg-black/70 rounded-t-lg">
+                <div class="flex items-center gap-2 cursor-pointer">
+                    <img id="friendChatAvatar" src="" class="w-8 h-8 rounded-full object-cover">
+                    <span id="friendChatUsername" class="font-bold text-cyan-400"></span>
+                </div>
+                <div class="flex items-center">
+                     <button id="minimizeFriendChatBtn" class="p-2 text-lg hover:bg-gray-800 rounded-md">−</button>
+                    <button id="closeFriendChatBtn" class="p-2 text-lg hover:bg-gray-800 rounded-md">&times;</button>
+                </div>
+            </div>
+            <div id="friendChatMessages" class="h-80 overflow-y-auto p-3 flex flex-col gap-3"></div>
+            <!-- FRIEND CHAT PICKER -->
+            <div id="friend-picker-panel" class="bg-gray-800 border-t-2 border-gray-700 flex-shrink-0" style="display: none;">
+                <div class="flex border-b border-gray-700">
+                    <button data-tab="friend-emoji" class="friend-picker-tab-btn flex-1 p-2 text-center font-semibold text-slate-300 border-b-2 border-fuchsia-500">Emojis</button>
+                    <button data-tab="friend-sticker" class="friend-picker-tab-btn flex-1 p-2 text-center font-semibold text-slate-400 border-b-2 border-transparent hover:border-fuchsia-400 transition-colors">Stickers</button>
+                    <button data-tab="friend-gif" class="friend-picker-tab-btn flex-1 p-2 text-center font-semibold text-slate-400 border-b-2 border-transparent hover:border-fuchsia-400 transition-colors">GIFs</button>
+                </div>
+                <div class="relative">
+                    <div id="friend-emoji-panel" class="friend-picker-content-panel p-2 grid grid-cols-8 sm:grid-cols-12 gap-1 max-h-48 overflow-y-auto"></div>
+                    <div id="friend-sticker-panel" class="friend-picker-content-panel p-2 grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-48 overflow-y-auto" style="display: none;"></div>
+                    <div id="friend-gif-panel" class="friend-picker-content-panel p-2 flex flex-col max-h-60" style="display: none;">
+                        <input type="text" id="friend-gif-search-input" placeholder="Search GIPHY" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 mb-2 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                        <div id="friend-gif-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 flex-1 overflow-y-auto"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="friendChatInputContainer" class="p-2 border-t border-gray-800 flex gap-2 items-center">
+                <div class="relative flex-1">
+                     <div class="absolute left-3 top-1/2 -translate-y-1/2">
+                        <button id="friendMediaBtn" class="p-2 text-slate-400 hover:text-cyan-400 transition">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        </button>
+                    </div>
+                    <input type="text" id="friendChatMessageInput" placeholder="Say hi..." class="w-full bg-gray-800 border border-gray-700 rounded-lg py-2 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                    <div class="absolute right-3 top-1/2 -translate-y-1/2">
+                        <button id="friend-picker-btn" class="p-2 text-slate-400 hover:text-cyan-400 transition-colors">😊</button>
+                    </div>
+                </div>
+                <button id="sendFriendMessageBtn" class="bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:opacity-90 transition">Send</button>
+            </div>
+        </div>
+        
+        <input type="file" id="mediaUploadInput" class="hidden" accept="image/*">
+        <input type="file" id="friendMediaUploadInput" class="hidden" accept="image/*">
+        <div id="modals-container"></div>
+        
+        <!-- Footer -->
+        <footer class="text-center p-4 text-xs text-slate-500 border-t border-gray-800/50 flex-shrink-0 z-10">
+            <div class="flex justify-center gap-4 sm:gap-6">
+                <a href="#" id="privacy-link" class="hover:text-fuchsia-400 transition-colors">Privacy Policy</a>
+                <a href="#" id="terms-link" class="hover:text-fuchsia-400 transition-colors">Terms of Service</a>
+                <a href="#" id="contact-link" class="hover:text-fuchsia-400 transition-colors">Contact Us</a>
+            </div>
+            <!-- Placeholder Start: This is an empty div added as requested. It will not affect the layout. -->
+            <div id="placeholder-container" class="my-2 text-slate-600 h-10 bg-gray-800/50 rounded-lg flex items-center justify-center">
+                <!-- This is a visible placeholder area. -->
+                <p>Placeholder Area</p>
+            </div>
+            <!-- Placeholder End -->
+            <p class="mt-2">&copy; 2025 Mic Drop Arena. All Rights Reserved.</p>
+        </footer>
+    </div>
+
+    <script type="module">
+        // Firebase Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+        import { getFirestore, collection, doc, onSnapshot, serverTimestamp, addDoc, orderBy, query, getDoc, updateDoc, writeBatch, where, deleteDoc, setDoc, arrayUnion, getDocs } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-storage.js";
+
+        // --- GLOBAL STATE & DOM ELEMENTS ---
+        let app, auth, db, storage, socket;
+        let currentRoomId = null;
+        let currentRoomName = '';
+        let currentRoomCreatorId = null;
+        let currentRoomUnsubscribe = null;
+        let currentFriendChatListener = null;
+        let blockedUserIds = new Set();
+        let friendRequests = [];
+        let currentReply = null;
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyA9R0gkR1vYrVmBdXPKXPW0lvauRM9fAic",
+            authDomain: "roast-battle-arena-95827.firebaseapp.com",
+            projectId: "roast-battle-arena-95827",
+            storageBucket: "roast-battle-arena-95827.firebasestorage.app",
+            messagingSenderId: "1012348270876",
+            appId: "1:1012348270876:web:103e4aa45e4b05fec022d9"
+        };
+
+        const dom = {
+            appWrapper: document.getElementById('app-wrapper'),
+            bgAnimationContainer: document.getElementById('bg-animation-container'),
+            userActions: document.getElementById('user-actions'),
+            roomNameHeader: document.getElementById('room-name-header'),
+            chat: document.getElementById('chat'),
+            messageInput: document.getElementById('messageInput'),
+            sendBtn: document.getElementById('sendBtn'),
+            pickerBtn: document.getElementById('picker-btn'),
+            pickerPanel: document.getElementById('picker-panel'),
+            emojiPanel: document.getElementById('emoji-panel'),
+            stickerPanel: document.getElementById('sticker-panel'),
+            gifPanel: document.getElementById('gif-panel'),
+            gifSearchInput: document.getElementById('gif-search-input'),
+            gifGrid: document.getElementById('gif-grid'),
+            mediaBtn: document.getElementById('media-btn'),
+            mediaUploadInput: document.getElementById('mediaUploadInput'),
+            friendMediaUploadInput: document.getElementById('friendMediaUploadInput'),
+            modalsContainer: document.getElementById('modals-container'),
+            sidebar: document.getElementById('sidebar'),
+            sidebarBackdrop: document.getElementById('sidebar-backdrop'),
+            sidebarToggle: document.getElementById('sidebar-toggle'),
+            sidebarClose: document.getElementById('sidebar-close'),
+            friendsList: document.getElementById('friends-list'),
+            friendChatContainer: document.getElementById('friendChatContainer'),
+            replyBanner: document.getElementById('reply-banner'),
+            replyBannerName: document.getElementById('reply-banner-name'),
+            replyBannerText: document.getElementById('reply-banner-text'),
+            cancelReplyBtn: document.getElementById('cancel-reply-btn'),
+            friendPickerBtn: document.getElementById('friend-picker-btn'),
+            friendPickerPanel: document.getElementById('friend-picker-panel'),
+        };
+        
+        // --- GIPHY API ---
+        const GIPHY_API_KEY = 'sRChfJDfxDxWIiLZ4MaDSBLRa8ygZt2o';
+        const GIPHY_TRENDING_URL = `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_API_KEY}&limit=30&rating=g`;
+        const GIPHY_SEARCH_URL = `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&limit=30&rating=g&q=`;
+
+
+        // --- ALL FUNCTION DECLARATIONS ---
+        
+        const createModal = (id, title, content, buttons, isClosable = true) => {
+            const existingModal = document.getElementById(id);
+            if(existingModal) existingModal.remove();
+
+            const closeButtonHTML = isClosable ? `<button class="absolute top-4 right-4 text-gray-500 hover:text-white text-3xl leading-none">&times;</button>` : '';
+            const modalHTML = `
+                <div id="${id}" class="fixed inset-0 bg-black/80 modal-backdrop z-[100] flex items-center justify-center p-4 animate-fade-in">
+                    <div class="bg-gray-900 rounded-lg shadow-xl w-full max-w-lg p-6 border border-fuchsia-500/30 animate-slide-up relative">
+                        ${closeButtonHTML}
+                        <h3 class="text-xl font-bold mb-4 text-fuchsia-400" style="text-shadow: 0 0 5px theme('colors.fuchsia.500');">${title}</h3>
+                        <div class="text-slate-300 mb-6 max-h-[60vh] overflow-y-auto pr-2">${content}</div>
+                        <div class="flex justify-end gap-3">
+                            ${buttons.map(btn => `<button id="${btn.id}" class="${btn.classes}">${btn.text}</button>`).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+            dom.modalsContainer.insertAdjacentHTML('beforeend', modalHTML);
+            
+            const modalElement = document.getElementById(id);
+            const closeModal = () => modalElement.remove();
+
+            if (isClosable) {
+                modalElement.querySelector('.absolute.top-4').addEventListener('click', closeModal);
+            }
+
+            buttons.forEach(btn => {
+                const btnEl = document.getElementById(btn.id);
+                if (btnEl) {
+                    btnEl.addEventListener('click', () => {
+                        if (btn.onClick) btn.onClick();
+                        if(btn.closesModal !== false) {
+                            closeModal();
+                        }
+                    });
+                }
+            });
+            
+            return modalElement;
+        };
+
+        const initializeAppLogic = async (user) => {
+            const urlParams = new URLSearchParams(window.location.search);
+            currentRoomId = urlParams.get('id');
+            currentRoomName = decodeURIComponent(urlParams.get('name'));
+
+            if (!currentRoomId || !currentRoomName) {
+                window.location.href = './rooms.html';
+                return;
+            }
+
+            const roomDoc = await getDoc(doc(db, 'rooms', currentRoomId));
+            if (!roomDoc.exists()) {
+                alert("This room no longer exists.");
+                window.location.href = './rooms.html';
+                return;
+            }
+            currentRoomCreatorId = roomDoc.data().creatorId;
+
+            const kickedUsers = roomDoc.data().kickedUsers || [];
+            if (kickedUsers.includes(user.uid)) {
+                alert("You have been kicked from this room.");
+                window.location.href = './rooms.html';
+                return;
+            }
+
+
+            dom.roomNameHeader.textContent = currentRoomName;
+            
+            const userAvatar = localStorage.getItem("micDropAvatar");
+            const profileIconHTML = `<img id="user-profile-icon" src="${userAvatar || 'https://placehold.co/40x40/1f2937/ffffff?text=?'}" class="w-9 h-9 rounded-full cursor-pointer border-2 border-fuchsia-500">`;
+            const notificationsBtnHTML = `<button id="notifications-btn" class="relative p-2 rounded-md hover:bg-gray-800 text-slate-300 hover:text-fuchsia-400 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg><span id="notification-dot" class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-stone-950 hidden"></span></button>`;
+            const adminBtnHTML = (user.uid === currentRoomCreatorId) ? `<button id="admin-btn" class="p-2 rounded-md hover:bg-gray-800 text-slate-300 hover:text-cyan-400 transition-colors"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.532 1.532 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.532 1.532 0 01-.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106A1.532 1.532 0 0111.49 3.17zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" /></svg></button>` : '';
+
+            if (user.isAnonymous) {
+                dom.userActions.innerHTML = `${adminBtnHTML}${notificationsBtnHTML}${profileIconHTML}<button id="google-login-btn" class="bg-gradient-to-r from-fuchsia-600 to-purple-700 text-white font-bold py-1 px-3 rounded-lg text-xs hover:opacity-90 transition">Login</button>`;
+                document.getElementById('google-login-btn').onclick = handleGoogleLogin;
+            } else {
+                dom.userActions.innerHTML = `${adminBtnHTML}${notificationsBtnHTML}${profileIconHTML}`;
+            }
+            
+            document.getElementById('user-profile-icon').onclick = openProfileModal;
+            document.getElementById('notifications-btn').onclick = showFriendRequests;
+            if (user.uid === currentRoomCreatorId) {
+                document.getElementById('admin-btn').onclick = openAdminModal;
+            }
+
+            setRandomBackground();
+            connectToSocket(user);
+            joinRoom();
+            populateEmojiPanel(dom.emojiPanel, dom.messageInput, dom.pickerPanel);
+            populateStickerPanel(dom.stickerPanel, dom.pickerPanel, (url) => sendMessage('sticker', url));
+            populateEmojiPanel(document.getElementById('friend-emoji-panel'), document.getElementById('friendChatMessageInput'), dom.friendPickerPanel);
+            populateStickerPanel(document.getElementById('friend-sticker-panel'), dom.friendPickerPanel, (url) => sendFriendMessage('sticker', url));
+            listenForFriends(user.uid);
+            listenForBlockedUsers(user.uid);
+            listenForFriendRequests(user.uid);
+            setupFriendChatPopup();
+        };
+
+        const setRandomBackground = () => {
+            const backgrounds = ['bg-anim-stars', 'bg-anim-orbs'];
+            const randomBg = backgrounds[Math.floor(Math.random() * backgrounds.length)];
+
+            dom.appWrapper.classList.remove('bg-anim-stars', 'bg-anim-orbs');
+            dom.bgAnimationContainer.innerHTML = '';
+
+            if (randomBg === 'bg-anim-orbs') {
+                for (let i = 0; i < 3; i++) {
+                    const orb = document.createElement('div');
+                    orb.className = 'orb';
+                    dom.bgAnimationContainer.appendChild(orb);
+                }
+            } else if (randomBg === 'bg-anim-stars') {
+                for (let i = 0; i < 50; i++) {
+                    const star = document.createElement('div');
+                    star.className = 'star';
+                    star.style.top = `${Math.random() * 100}%`;
+                    star.style.left = `${Math.random() * 100}%`;
+                    star.style.width = `${Math.random() * 2 + 1}px`;
+                    star.style.height = star.style.width;
+                    star.style.animationDelay = `${Math.random() * 4}s`;
+                    star.style.animationDuration = `${Math.random() * 3 + 2}s`;
+                    dom.bgAnimationContainer.appendChild(star);
+                }
+            }
+            dom.appWrapper.classList.add(randomBg);
+        };
+
+        const joinRoom = () => {
+            if (currentRoomUnsubscribe) currentRoomUnsubscribe();
+
+            const messagesRef = collection(db, 'rooms', currentRoomId, 'messages');
+            const q = query(messagesRef, orderBy('timestamp', 'asc'));
+
+            currentRoomUnsubscribe = onSnapshot(q, (snapshot) => {
+                snapshot.docChanges().forEach(change => {
+                    if (change.type === 'added') {
+                        displayMessage(change.doc.id, change.doc.data());
+                    }
+                });
+            });
+        };
+
+        const displayMessage = (msgId, msgData) => {
+            // Check if sender is blocked
+            if (blockedUserIds.has(msgData.senderId)) {
+                return; // Do not display the message
+            }
+            
+            const messageEl = document.createElement('div');
+            
+            if (msgData.type === 'system') {
+                messageEl.className = 'text-center text-sm italic text-slate-500 py-2';
+                messageEl.textContent = msgData.text;
+                dom.chat.appendChild(messageEl);
+                dom.chat.scrollTop = dom.chat.scrollHeight;
+                return;
+            }
+
+            const isYou = msgData.senderId === auth.currentUser.uid;
+            messageEl.className = `flex flex-col ${isYou ? 'items-end' : 'items-start'}`;
+            
+            let messageContent = '';
+            if (msgData.type === 'image') {
+                messageContent = `<img src="${msgData.url}" class="max-w-[75vw] sm:max-w-xs rounded-lg mt-1 cursor-pointer" onclick="window.open('${msgData.url}', '_blank')">`;
+            } else if (msgData.type === 'sticker') {
+                messageContent = `<img src="${msgData.url}" class="w-32 h-32 object-contain">`;
+            } else if (msgData.type === 'gif') {
+                messageContent = `<img src="${msgData.url}" alt="GIF" class="max-w-[75vw] sm:max-w-xs rounded-lg mt-1">`;
+            } else {
+                messageContent = `<div class="bg-gray-800/70 p-3 rounded-lg max-w-[75vw] sm:max-w-md message-content">${msgData.text}</div>`;
+            }
+
+            let replyHTML = '';
+            if (msgData.replyingToText) {
+                replyHTML = `
+                    <div class="text-xs text-slate-400 border-l-2 border-cyan-500 pl-2 mb-1 opacity-70">
+                        <strong>${msgData.replyingToName}</strong>: ${msgData.replyingToText}
+                    </div>
+                `;
+            }
+
+            messageEl.innerHTML = `
+                <div class="flex items-start gap-3 ${isYou ? 'flex-row-reverse' : ''}">
+                    <img src="${msgData.senderAvatar || 'https://placehold.co/40x40/1f2937/ffffff?text=?'}" class="w-10 h-10 rounded-full object-cover cursor-pointer border-2 ${isYou ? 'border-fuchsia-500' : 'border-cyan-500'}" onclick="window.viewUserProfile('${msgData.senderId}', '${msgData.senderName}', '${msgData.senderAvatar}')">
+                    <div class="flex flex-col ${isYou ? 'items-end' : 'items-start'} relative group message-container">
+                        <span class="font-bold text-sm mb-1 ${isYou ? 'text-fuchsia-400' : 'text-cyan-400'}">${msgData.senderName}</span>
+                        ${replyHTML}
+                        ${messageContent}
+                        <button class="reply-btn absolute top-0 ${isYou ? '-left-8' : '-right-8'} p-1 bg-gray-700 rounded-full opacity-0 transition-opacity" onclick="window.setReplyTo('${msgId}', '${msgData.senderName}', '${msgData.text || 'Image'}')">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M7.707 3.293a1 1 0 010 1.414L5.414 7H11a7 7 0 017 7v2a1 1 0 11-2 0v-2a5 5 0 00-5-5H5.414l2.293 2.293a1 1 0 11-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+            dom.chat.appendChild(messageEl);
+            dom.chat.scrollTop = dom.chat.scrollHeight;
+        };
+
+        const sendMessage = async (type = 'text', content = null) => {
+            const text = dom.messageInput.value.trim();
+            if ((type === 'text' && !text) && type !== 'sticker' && type !== 'gif' && type !== 'image') return;
+
+            const user = auth.currentUser;
+            if (!user) return;
+
+            const messageData = {
+                type: type,
+                text: type === 'text' ? text : null,
+                url: (type === 'image' || type === 'sticker' || type === 'gif') ? content : null,
+                senderId: user.uid,
+                senderName: localStorage.getItem("micDropUsername") || "Anonymous",
+                senderAvatar: localStorage.getItem("micDropAvatar") || 'https://placehold.co/40x40/1f2937/ffffff?text=?',
+                timestamp: serverTimestamp(),
+            };
+
+            if (currentReply) {
+                messageData.replyingToId = currentReply.id;
+                messageData.replyingToName = currentReply.name;
+                messageData.replyingToText = currentReply.text;
+            }
+
+            await addDoc(collection(db, 'rooms', currentRoomId, 'messages'), messageData);
+            if (type === 'text') dom.messageInput.value = '';
+            cancelReply();
+        };
+
+        window.setReplyTo = (msgId, name, text) => {
+            currentReply = { id: msgId, name, text: text.substring(0, 100) }; // Truncate for display
+            dom.replyBannerName.textContent = `Replying to ${name}`;
+            dom.replyBannerText.textContent = currentReply.text;
+            dom.replyBanner.classList.remove('hidden');
+            dom.replyBanner.classList.add('flex');
+            dom.messageInput.focus();
+        };
+
+        const cancelReply = () => {
+            currentReply = null;
+            dom.replyBanner.classList.add('hidden');
+            dom.replyBanner.classList.remove('flex');
+        };
+
+        const populateEmojiPanel = (panel, input, parentPanel) => {
+             const emojis = {
+                'Smileys & Emotion': ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '🥲', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🥸', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '😈', '👿', '👹', '👺', '🤡', '💩', '👻', '💀', '☠️', '👽', '👾', '🤖', '🎃', '😺', '😸', '😹', '😻', '😼', '😽', '🙀', '😿', '😾'],
+                'People & Body': ['👋', '🤚', '🖐️', '✋', '🖖', '👌', '🤌', '🤏', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👍', '?', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✍️', '💅', '🤳', '💪', '🦾', '🦿', '🦵', '🦶', '👂', '🦻', '👃', '🧠', '🫀', '🫁', '🦷', '🦴', '👀', '👁️', '👅', '👄', '👶', '🧒', '👦', '👧', '🧑', '👱', '👨', '🧔', '👨‍🦰', '👨‍🦱', '👨‍🦳', '👨‍🦲', '👩', '👩‍🦰', '🧑‍🦰', '👩‍🦱', '🧑‍🦱', '👩‍🦳', '🧑‍🦳', '👩‍🦲', '🧑‍🦲', '👱‍♀️', '👱‍♂️', '🧓', '👴', '👵', '🙍', '🙍‍♂️', '🙍‍♀️', '🙎', '🙎‍♂️', '🙎‍♀️', '🙅', '🙅‍♂️', '🙅‍♀️', '🙆', '🙆‍♂️', '🙆‍♀️', '💁', '💁‍♂️', '💁‍♀️', '🙋', '🙋‍♂️', '🙋‍♀️', '🧏', '🧏‍♂️', '🧏‍♀️', '🙇', '🙇‍♂️', '🙇‍♀️', '🤦', '🤦‍♂️', '🤦‍♀️', '🤷', '🤷‍♂️', '🤷‍♀️', '🧑‍⚕️', '👨‍⚕️', '👩‍⚕️', '🧑‍🎓', '👨‍🎓', '👩‍🎓', '🧑‍🏫', '👨‍🏫', '👩‍🏫', '🧑‍⚖️', '👨‍⚖️', '👩‍⚖️', '🧑‍🌾', '👨‍🌾', '👩‍🌾', '🧑‍🍳', '👨‍🍳', '👩‍🍳', '🧑‍🔧', '👨‍🔧', '👩‍🔧', '🧑‍🏭', '👨‍🏭', '👩‍🏭', '🧑‍💼', '👨‍💼', '👩‍💼', '🧑‍🔬', '👨‍🔬', '👩‍🔬', '🧑‍💻', '👨‍💻', '👩‍💻', '🧑‍🎤', '👨‍🎤', '👩‍🎤', '🧑‍🎨', '👨‍🎨', '👩‍🎨', '🧑‍✈️', '👨‍✈️', '👩‍✈️', '🧑‍🚀', '👨‍🚀', '👩‍🚀', '🧑‍🚒', '👨‍🚒', '👩‍🚒', '👮', '👮‍♂️', '👮‍♀️', '🕵️', '🕵️‍♂️', '🕵️‍♀️', '💂', '💂‍♂️', '💂‍♀️', '🥷', '👷', '👷‍♂️', '👷‍♀️', '🤴', '👸', '👳', '👳‍♂️', '👳‍♀️', '👲', '🧕', '🤵', '🤵‍♂️', '🤵‍♀️', '👰', '👰‍♂️', '👰‍♀️', '🤰', '🤱', '👩‍🍼', '👨‍🍼', '🧑‍🍼', '👼', '🎅', '🤶', '🧑‍🎄', '🦸', '🦸‍♂️', '🦸‍♀️', '🦹', '🦹‍♂️', '🦹‍♀️', '🧙', '🧙‍♂️', '🧙‍♀️', '🧚', '🧚‍♂️', '🧚‍♀️', '🧛', '🧛‍♂️', '🧛‍♀️', '🧜', '🧜‍♂️', '🧜‍♀️', '🧝', '🧝‍♂️', '🧝‍♀️', '🧞', '🧞‍♂️', '🧞‍♀️', '🧟', '🧟‍♂️', '🧟‍♀️', '💆', '💆‍♂️', '💆‍♀️', '💇', '💇‍♂️', '💇‍♀️', '🚶', '🚶‍♂️', '🚶‍♀️', '🧍', '🧍‍♂️', '🧍‍♀️', '🧎', '🧎‍♂️', '🧎‍♀️', '🧑‍🦯', '👨‍🦯', '👩‍🦯', '🧑‍🦼', '👨‍🦼', '👩‍🦼', '🧑‍🦽', '👨‍🦽', '👩‍🦽', '🏃', '🏃‍♂️', '🏃‍♀️', '💃', '🕺', '🕴️', '👯', '👯‍♂️', '👯‍♀️', '🧖', '🧖‍♂️', '🧖‍♀️', '🧗', '🧗‍♂️', '🧗‍♀️', '🤺', '🏇', '⛷️', '🏂', '🏌️', '🏌️‍♂️', '🏌️‍♀️', '🏄', '🏄‍♂️', '🏄‍♀️', '🚣', '🚣‍♂️', '🚣‍♀️', '🏊', '🏊‍♂️', '🏊‍♀️', '⛹️', '⛹️‍♂️', '⛹️‍♀️', '🏋️', '🏋️‍♂️', '🏋️‍♀️', '🚴', '🚴‍♂️', '🚴‍♀️', '🚵', '🚵‍♂️', '🚵‍♀️', '🤸', '🤸‍♂️', '🤸‍♀️', '🤼', '🤼‍♂️', '🤼‍♀️', '🤽', '🤽‍♂️', '🤽‍♀️', '🤾', '🤾‍♂️', '🤾‍♀️', '🤹', '🤹‍♂️', '🤹‍♀️', '🧘', '🧘‍♂️', '🧘‍♀️', '🛀', '🛌', '🧑‍🤝‍🧑', '👭', '👫', '👬', '💏', '👩‍❤️‍💋‍👨', '👨‍❤️‍💋‍👨', '👩‍❤️‍💋‍👩', '💑', '👩‍❤️‍👨', '👨‍❤️‍👨', '👩‍❤️‍👩', '👪', '👨‍👩‍👦', '👨‍👩‍👧', '👨‍👩‍👧‍👦', '👨‍👩‍👦‍👦', '👨‍👩‍👧‍👧', '👨‍👨‍👦', '👨‍👨‍👧', '👨‍👨‍👧‍👦', '👨‍👨‍👦‍👦', '👨‍👨‍👧‍👧', '👩‍👩‍👦', '👩‍👩‍👧', '👩‍👩‍👧‍👦', '👩‍👩‍👦‍👦', '👩‍👩‍👧‍👧', '👨‍👦', '👨‍👦‍👦', '👨‍👧', '👨‍👧‍👦', '👨‍👧‍👧', '👩‍👦', '👩‍👦‍👦', '👩‍👧', '👩‍👧‍👦', '👩‍👧‍👧', '🗣️', '👤', '👥', '🫂'],
+                'Animals & Nature': ['🐵', '🐒', '🦍', '🦧', '🐶', '🐕', '🦮', '🐕‍🦺', '🐩', '🐺', '🦊', '🦝', '🐱', '🐈', '🐈‍⬛', '🦁', '🐯', '🐅', '🐆', '🐴', '🐎', '🦄', '🦓', '🦌', '🦬', '🐮', '🐂', '🐃', '🐄', '🐷', '🐖', '🐗', '🐽', '🐏', '🐑', '🐐', '🐪', '🐫', '🦙', '🦒', '🐘', '🦣', '🦏', '🦛', '🐭', '🐁', '🐀', '🐹', '🐰', '🐇', '🐿️', '🦫', '🦔', '🦇', '🐻', '🐻‍❄️', '🐨', '🐼', '🦥', '🦦', '🦨', '🦘', '🦡', '🐾', '🦃', '🐔', '🐓', '🐣', '🐤', '🐥', '🐦', '🐧', '🕊️', '🦅', '🦆', '🦢', '🦉', '🦤', '🪶', '🐸', '🐊', '🐢', '🦎', '🐍', '🐲', '🐉', '🦕', '🦖', '🐳', '🐋', '🐬', '🦭', '🐟', '🐠', '🐡', '🦈', '🐙', '🐚', '🐌', '🦋', '🐛', '🐜', '🐝', '🪲', '🐞', '🦗', '🪳', '🕷️', '🕸️', '🦂', '🦟', '🪰', '🪱', '🦠', '💐', '🌸', '💮', '🏵️', '🌹', '🥀', '🌺', '🌻', '🌼', '🌷', '🌱', '🪴', '🌲', '🌳', '🌴', '🌵', '🌾', '🌿', '☘️', '🍀', '🍁', '🍂', '🍃'],
+                'Food & Drink': ['🍇', '🍈', '🍉', '🍊', '🍋', '🍌', '🍍', '🥭', '🍎', '🍏', '🍐', '🍑', '🍒', '🍓', '🫐', '🥝', '🍅', '🫒', '🥥', '🥑', '🍆', '🥔', '🥕', '🌽', '🌶️', '🫑', '🥒', '🥬', '🥦', '🧄', '🧅', '🍄', '🥜', '🌰', '🍞', '🥐', '🥖', '🫓', '🥨', '🥯', '🥞', '🧇', '🧀', '🍖', '🍗', '🥩', '🥓', '🍔', '🍟', '🍕', '🌭', '🥪', '🌮', '🌯', '🫔', '🥙', '🧆', '🥚', '🍳', '🥘', '🍲', '🫕', '🥣', '🥗', '🍿', '🧈', '🧂', '🥫', '🍱', '🍘', '🍙', '🍚', '🍛', '🍜', '🍝', '🍠', '🍢', '🍣', '🍤', '🍥', '🥮', '🍡', '🥟', '🥠', '🥡', '🦀', '🦞', '🦐', '🦑', '🦪', '🍦', '🍧', '🍨', '🍩', '🍪', '🎂', '🍰', '🧁', '🥧', '🍫', '🍬', '🍭', '🍮', '🍯', '🍼', '🥛', '☕', '🫖', '🍵', '🍶', '🍾', '🍷', '🍸', '🍹', '🍺', '🍻', '🥂', '🥃', ' TUMBLER_GLASS', ' CUP_WITH_STRAW', '🧋', '🧃', '🧉', '🧊', '🥢', '🍽️', '🍴', '🥄', '🔪', '🏺'],
+                'Travel & Places': ['🌍', '🌎', '🌏', '🌐', '🗺️', '🗾', '🧭', '🏔️', '⛰️', '🌋', '🗻', '🏕️', '🏖️', '🏜️', '🏝️', '🏞️', '🏟️', '🏛️', '🏗️', '🧱', '🪨', '🪵', '🛖', '🏘️', '🏚️', '🏠', '🏡', '🏢', '🏣', '🏤', '🏥', '🏦', '🏨', '🏩', '🏪', '🏫', '🏬', '🏭', '🏯', '🏰', '💒', '🗼', '🗽', '⛪', '🕌', '🛕', '🕍', '⛩️', '🕋', '⛲', '⛺', '🌁', '🌃', '🏙️', '🌄', '🌅', '🌆', '🌇', '🌉', '♨️', '🎠', '🎡', '🎢', '💈', '🎪', '🚂', '🚃', '🚄', '🚅', '🚆', '🚇', '🚈', '🚉', '🚊', '🚝', '🚞', '🚋', '🚌', '🚍', '🚎', '🚐', '🚑', '🚒', '🚓', '🚔', '🚕', '🚖', '🚗', '🚘', '🚚', '🚛', '🚜', '🏎️', '🏍️', '🛵', '🦽', '🦼', '🛺', '🚲', '🛴', '🛹', '🛼', '🚏', '🛣️', '🛤️', '🛢️', '⛽', '🚨', '🚥', '🚦', '🛑', '🚧', '⚓', '⛵', '🛶', '🚤', '🛳️', '⛴️', '🛥️', '🚢', '✈️', '🛩️', '🛫', '🛬', '🪂', '💺', '🚁', '🚟', '🚠', '🚡', '🛰️', '🚀', '🛸'],
+                'Activities': ['🎨', '🎬', '🎤', '🎧', '🎼', '🎹', '🥁', '🎷', '🎺', '🎸', '🪕', '🎻', '🎲', '♟️', '🎯', '🎳', '🎮', '🎰', '🧩', '♟', '🎭', '🪀', '🪁', '🎱'],
+                'Objects': ['📱', '💻', '🖥️', '🖨️', '🖱️', '📷', '📹', '📺', '📼', '💾', '💿', '📀', '🧮', '📞', '☎️', '📟', '📠', '🔋', '🔌', '💡', '🔦', '🕯️', '🧯', '🗑️', '🛢️', '💸', '💵', '💴', '💶', '💷', '💰', '💳', '💎', '⚖️', '🦯', '🧰', '🔧', '🔨', '⚒️', '🛠️', '⛏️', '🔩', '⚙️', '🧱', '⛓️', '🧲', '🔫', '💣', '🔪', '🗡️', '🛡️', '🚬', '⚰️', '🪦', '⚱️', '🏺', '🔮', '📿', '🧿', '💈', '⚗️', '🔭', '🔬', '🕳️', '💊', '💉', '🩸', '🧬', '🦠', '🧫', '🧪', '🌡️', '🧹', '🧺', '🧻', '🚽', '🚰', '🚿', '🛁', '🛀', '🧼', '🪥', '🪒', '🧽', '🪣', '🧴', '🔑', '🗝️', '🛋️', '🪑', '🛌', '🚪', '🪞', '🪟', '🧳', '🖼️', '🧭', '🗺️', '⛱️', '🗿', '🔔', '🔕', '📣', '📢', ' बुलhorn', ' Postal Horn', '📜', '📃', '📄', '📑', '🧾', '📊', '📈', '📉', '🗒️', '🗓️', '📆', '📅', '📇', '🗃️', '🗳️', '🗄️', '📋', '📁', '📂', '🗂️', '🗞️', '📰', '📓', '📔', '📒', '📕', '📗', '📘', '📙', '📚', '📖', '🔖', '🧷', '🔗', '📎', '🖇️', '📐', '📏', '🧮', '📌', '📍', '✂️', '🖊️', '🖋️', '✒️', '🖌️', '🖍️', '📝', '✏️', '🔍', '🔎', '🔏', '🔐', '🔒', '🔓'],
+                'Symbols': ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉️', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️', '🛐', '⛎', '♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓', '🆔', '⚛️', '🉑', '☢️', '☣️', '📴', '📳', '🈶', '🈚', '🈸', '🈺', '🈷️', '✴️', '🆚', '💮', '🉐', '㊙️', '㊗️', '🈴', '🈵', '🈹', '🈲', '🅰️', '🅱️', '🆎', '🆑', '🅾️', '🆘', '❌', '⭕', '🛑', '⛔', '📛', '🚫', '💯', '💢', '♨️', '🚷', '🚯', '🚳', '🚱', '🔞', '📵', '🚭', '❗', '❕', '❓', '❔', '‼️', '⁉️', '🔅', '🔆', '〽️', '⚠️', '🚸', '🔱', '⚜️', '🔰', '♻️', '✅', '🈯', '💹', '❇️', '✳️', '❎', '🌐', '💠', 'Ⓜ️', '🌀', '💤', '🏧', '🚾', '♿', '🅿️', '🛗', '🈳', '🈂️', '🛂', '🛃', '🛄', '🛅', '🚹', '🚺', '🚼', '⚧️', '🚻', '🚮', '🎦', '📶', '🈁', '🔣', 'ℹ️', '🔤', '🔡', '🔠', '🆖', '🆗', '🆙', '🆒', '🆕', '🆓', '0️⃣', '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '🔢', '#️⃣', '*️⃣', '⏏️', '▶️', '⏸️', '⏯️', '⏹️', '⏺️', '⏭️', '⏮️', '⏩', '⏪', '⏫', '⏬', '◀️', '🔼', '🔽', '➡️', '⬅️', '⬆️', '⬇️', '↗️', '↘️', '↙️', '↖️', '↕️', '↔️', '↪️', '↩️', '⤴️', '⤵️', '🔀', '🔁', '🔂', '🔄', '🔃', '🎵', '🎶', '➕', '➖', '➗', '✖️', '♾️', '💲', '💱', '™️', '©️', '®️', '〰️', '➰', '➿', '🔚', '🔙', '🔛', '🔝', '🔜', '✔️', '☑️', '🔘', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⚪', '🟤', '🔺', '🔻', '🔼', '🔽', '🔳', '🔲', '▪️', '▫️', '◾', '◽', '◼️', '◻️', '🟥', '🟧', '🟨', '🟩', '🟦', '🟪', '⬛', '⬜', '🟫', '🔶', '🔷', '🔸', '🔹', '🔶', '🔷', '🔸', '🔹'],
+                'Flags': ['🏁', '🚩', '🎌', '🏴', '🏳️', '🏳️‍🌈', '🏳️‍⚧️', '🏴‍☠️', '🇦🇨', '🇦🇩', '🇦🇪', '🇦🇫', '🇦🇬', '🇦🇮', '🇦🇱', '🇦🇲', '🇦🇴', '🇦🇶', '🇦🇷', '🇦🇸', '🇦🇹', '🇦🇺', '🇦🇼', '🇦🇽', '🇦🇿', '🇧🇦', '🇧🇧', '🇧🇩', '🇧🇪', '🇧🇫', '🇧🇬', '🇧🇭', '🇧🇮', '🇧🇯', '🇧🇱', '🇧🇲', '🇧🇳', '🇧🇴', '🇧🇶', '🇧🇷', '🇧🇸', '🇧🇹', '🇧🇻', '🇧🇼', '🇧🇾', '🇧🇿', '🇨🇦', '🇨🇨', '🇨🇩', '🇨🇫', '🇨🇬', '🇨🇭', '🇨🇮', '🇨🇰', '🇨🇱', '🇨🇲', '🇨🇳', '🇨🇴', '🇨🇵', '🇨🇷', '🇨🇺', '🇨🇻', '🇨🇼', '🇨🇽', '🇨🇾', '🇨🇿', '🇩🇪', '🇩🇬', '🇩🇯', '🇩🇰', '🇩🇲', '🇩🇴', '🇩🇿', '🇪🇦', '🇪🇨', '🇪🇪', '🇪🇬', '🇪🇭', '🇪🇷', '🇪🇸', '🇪🇹', '🇪🇺', '🇫🇮', '🇫🇯', '🇫🇰', '🇫🇲', '🇫🇴', '🇫🇷', '🇬🇦', '🇬🇧', '🇬🇩', '🇬🇪', '🇬🇫', '🇬🇬', '🇬🇭', '🇬🇮', '🇬🇱', '🇬🇲', '🇬🇳', '🇬🇵', '🇬🇶', '🇬🇷', '🇬🇸', '🇬🇹', '🇬🇺', '🇬🇼', '🇬🇾', '🇭🇰', '🇭🇲', '🇭🇳', '🇭🇷', '🇭🇹', '🇭🇺', '🇮🇨', '🇮🇩', '🇮🇪', '🇮🇱', '🇮🇲', '🇮🇳', '🇮🇴', '🇮🇶', '🇮🇷', '🇮🇸', '🇮🇹', '🇯🇪', '🇯🇲', '🇯🇴', '🇯🇵', '🇰🇪', '🇰🇬', '🇰🇭', '🇰🇮', '🇰🇲', '🇰🇳', '🇰🇵', '🇰🇷', '🇰🇼', '🇰🇾', '🇰🇿', '🇱🇦', '🇱🇧', '🇱🇨', '🇱🇮', '🇱🇰', '🇱🇷', '🇱🇸', '🇱🇹', '🇱🇺', '🇱🇻', '🇱🇾', '🇲🇦', '🇲🇨', '🇲🇩', '🇲🇪', '🇲🇫', '🇲🇬', '🇲🇭', '🇲🇰', '🇲🇱', '🇲🇲', '🇲🇳', '🇲🇴', '🇲🇵', '🇲🇶', '🇲🇷', '🇲🇸', '🇲🇹', '🇲🇺', '🇲🇻', '🇲🇼', '🇲🇽', '🇲🇾', '🇲🇿', '🇳🇦', '🇳🇨', '🇳🇪', '🇳🇫', '🇳🇬', '🇳🇮', '🇳🇱', '🇳🇴', '🇳🇵', '🇳🇷', '🇳🇺', '🇳🇿', '🇴🇲', '🇵🇦', '🇵🇪', '🇵🇫', '🇵🇬', '🇵🇭', '🇵🇰', '🇵🇱', '🇵🇲', '🇵🇳', '🇵🇷', '🇵🇸', '🇵🇹', '🇵🇼', '🇵🇾', '🇶🇦', '🇷🇪', '🇷🇴', '🇷🇸', '🇷🇺', '🇷🇼', '🇸🇦', '🇸🇧', '🇸🇨', '🇸🇩', '🇸🇪', '🇸🇬', '🇸🇭', '🇸🇮', '🇸🇯', '🇸🇰', '🇸🇱', '🇸🇲', '🇸🇳', '🇸🇴', '🇸🇷', '🇸🇸', '🇸🇹', '🇸🇻', '🇸🇽', '🇸🇾', '🇸🇿', '🇹🇦', '🇹🇨', '🇹🇩', '🇹🇫', '🇹🇬', '🇹🇭', '🇹🇯', '🇹🇰', '🇹🇱', '🇹🇲', '🇹🇳', '🇹🇴', '🇹🇷', '🇹🇹', '🇹🇻', '🇹🇼', '🇹🇿', '🇺🇦', '🇺🇬', '🇺🇲', '🇺🇳', '🇺🇸', '🇺🇾', '🇺🇿', '🇻🇦', '🇻🇨', '🇻🇪', '🇻🇬', '🇻🇮', '🇻🇳', '🇻🇺', '🇼🇫', '🇼🇸', '🇽🇰', '🇾🇪', '🇾🇹', '🇿🇦', '🇿🇲', '🇿🇼', '🏴󠁧󠁢󠁥󠁮󠁧󠁿', '🏴󠁧󠁢󠁳󠁣󠁴󠁿', '🏴󠁧󠁢󠁷󠁬󠁳󠁿']
+            };
+
+            panel.innerHTML = ''; // Clear previous content
+            for (const category in emojis) {
+                const categoryTitle = document.createElement('div');
+                categoryTitle.className = 'col-span-full text-fuchsia-400 font-bold text-sm sticky top-0 bg-gray-800 py-1 px-2 z-10';
+                categoryTitle.textContent = category;
+                panel.appendChild(categoryTitle);
+
+                emojis[category].forEach(emoji => {
+                    const btn = document.createElement('button');
+                    btn.className = 'p-1 text-2xl hover:bg-gray-700 rounded-lg transition-transform hover:scale-125';
+                    btn.textContent = emoji;
+                    btn.onclick = () => {
+                        input.value += emoji;
+                    };
+                    panel.appendChild(btn);
+                });
+            }
+        };
+        
+        const populateStickerPanel = (panel, parentPanel, sendFunction) => {
+            const stickerStyles = ["bottts", "fun-emoji", "identicon", "miniavs", "pixel-art-neutral", "adventurer", "lorelei"];
+            const stickers = [];
+            for (const style of stickerStyles) {
+                for (let i = 0; i < 12; i++) { // Generate 12 stickers per style
+                    const seed = `${style}${i}`; // Use a consistent seed for reproducibility
+                    stickers.push(`https://api.dicebear.com/7.x/${style}/svg?seed=${seed}&radius=0&size=128`);
+                }
+            }
+
+            panel.innerHTML = '';
+            stickers.forEach(stickerUrl => {
+                const btn = document.createElement('button');
+                btn.className = 'p-2 hover:bg-gray-700 rounded-lg transition-transform hover:scale-110 flex justify-center items-center';
+                btn.innerHTML = `<img src="${stickerUrl}" class="w-16 h-16 object-contain" loading="lazy">`;
+                btn.onclick = () => {
+                    sendFunction(stickerUrl);
+                    parentPanel.style.display = 'none';
+                };
+                panel.appendChild(btn);
+            });
+        };
+
+        const fetchAndDisplayGifs = async (grid, input, parentPanel, sendFunction) => {
+            grid.innerHTML = '<p class="col-span-full text-center text-slate-400">Loading GIFs...</p>';
+            const searchTerm = input.value.trim();
+            const url = searchTerm ? `${GIPHY_SEARCH_URL}${encodeURIComponent(searchTerm)}` : GIPHY_TRENDING_URL;
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`GIPHY API error: ${response.statusText}`);
+                const gifData = await response.json();
+
+                grid.innerHTML = ''; // Clear loading message
+
+                if (gifData.data && gifData.data.length > 0) {
+                    gifData.data.forEach(gif => {
+                        const gifContainer = document.createElement('div');
+                        gifContainer.className = 'cursor-pointer rounded-md overflow-hidden hover:opacity-80 transition bg-gray-700 aspect-square flex items-center justify-center';
+                        gifContainer.innerHTML = `<img src="${gif.images.fixed_height_small.url}" alt="${gif.title}" class="w-full h-full object-cover" loading="lazy">`;
+                        gifContainer.onclick = () => {
+                            sendFunction(gif.images.original.url);
+                            parentPanel.style.display = 'none';
+                        };
+                        grid.appendChild(gifContainer);
+                    });
+                } else {
+                    grid.innerHTML = '<p class="col-span-full text-center text-slate-400">No GIFs found.</p>';
+                }
+            } catch (error) {
+                console.error("Error fetching GIFs:", error);
+                grid.innerHTML = '<p class="col-span-full text-center text-red-400">Failed to load GIFs. Check API key or network.</p>';
+            }
+        };
+
+        const handleMediaUpload = async (event) => {
+            const file = event.target.files[0];
+            if (!file || !currentRoomId) return;
+            
+            const filePath = `room_images/${currentRoomId}/${Date.now()}_${file.name}`;
+            const storageRef = ref(storage, filePath);
+
+            try {
+                const snapshot = await uploadBytes(storageRef, file);
+                const imageUrl = await getDownloadURL(snapshot.ref);
+                await sendMessage('image', imageUrl);
+            } catch (error) {
+                console.error("Error uploading image:", error);
+            } finally {
+                event.target.value = '';
+            }
+        };
+
+        const connectToSocket = (user) => {
+            if (socket) socket.disconnect();
+            socket = io(); 
+
+            socket.on("connect", () => {
+                console.log("Socket connected for real-time events!");
+                socket.emit('join_room', { room: currentRoomId, user: localStorage.getItem("micDropUsername") || "Anonymous" });
+            });
+        };
+
+        // --- FRIENDS & PROFILE LOGIC ---
+        const getConversationId = (uid1, uid2) => uid1 < uid2 ? `${uid1}_${uid2}` : `${uid2}_${uid1}`;
+
+        const toggleSidebar = (show) => {
+            if (show) {
+                dom.sidebar.classList.remove('-translate-x-full');
+                dom.sidebarBackdrop.classList.remove('hidden');
+            } else {
+                dom.sidebar.classList.add('-translate-x-full');
+                dom.sidebarBackdrop.classList.add('hidden');
+            }
+        };
+
+        const listenForFriends = (userId) => {
+            const q = query(collection(db, "friendships"), where("users", "array-contains", userId), where("status", "==", "friends"));
+            onSnapshot(q, (snapshot) => {
+                dom.friendsList.innerHTML = '';
+                if (snapshot.empty) {
+                    dom.friendsList.innerHTML = `<p class="text-slate-500 text-center p-4">No friends yet.</p>`;
+                }
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const otherUserId = data.users.find(uid => uid !== userId);
+                    onSnapshot(doc(db, "users", otherUserId), (userDoc) => {
+                        if (userDoc.exists()) {
+                            renderFriendItem(userDoc.data());
+                        }
+                    });
+                });
+            });
+        };
+
+        const renderFriendItem = (friend) => {
+            let friendEl = document.getElementById(`friend-${friend.uid}`);
+            if (friendEl) friendEl.remove();
+
+            friendEl = document.createElement('div');
+            friendEl.id = `friend-${friend.uid}`;
+            friendEl.className = 'flex items-center gap-3 p-2 rounded-lg hover:bg-gray-800/50 cursor-pointer transition-colors group relative';
+            friendEl.innerHTML = `
+                <div class="relative flex-shrink-0">
+                    <img src="${friend.avatar}" class="w-10 h-10 rounded-full object-cover">
+                    <span class="absolute bottom-0 right-0 w-3 h-3 ${friend.online ? 'bg-green-400' : 'bg-slate-500'} border-2 border-stone-900 rounded-full"></span>
+                </div>
+                <span class="font-medium flex-1 truncate">${friend.username}</span>
+            `;
+            friendEl.onclick = () => openFriendChat(friend.uid, friend.username, friend.avatar);
+            dom.friendsList.appendChild(friendEl);
+        };
+
+        const openFriendChat = (uid, name, avatar) => {
+            toggleSidebar(false);
+            dom.friendChatContainer.classList.remove('translate-y-full');
+            
+            const chat = dom.friendChatContainer;
+            chat.querySelector('#friendChatUsername').textContent = name;
+            chat.querySelector('#friendChatAvatar').src = avatar;
+
+            const currentUser = auth.currentUser;
+            if (!currentUser) return;
+
+            const conversationId = getConversationId(currentUser.uid, uid);
+            chat.dataset.conversationId = conversationId;
+            chat.dataset.recipientUid = uid;
+
+            const messagesContainer = chat.querySelector('#friendChatMessages');
+            messagesContainer.innerHTML = '';
+
+            const q = query(collection(db, 'directMessages', conversationId, 'messages'), orderBy('timestamp', 'asc'));
+
+            if (currentFriendChatListener) currentFriendChatListener(); 
+
+            currentFriendChatListener = onSnapshot(q, snapshot => {
+                snapshot.docChanges().forEach(change => {
+                    if (change.type === 'added') {
+                        renderFriendMessage(change.doc.data());
+                    }
+                });
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            });
+        };
+
+        const renderFriendMessage = (msgData) => {
+            const msgEl = document.createElement('div');
+            const isYou = msgData.senderId === auth.currentUser.uid;
+            let messageContent = '';
+            if (msgData.type === 'image' || msgData.type === 'gif') {
+                messageContent = `<img src="${msgData.url}" class="max-w-[70%] rounded-lg cursor-pointer">`;
+            } else if (msgData.type === 'sticker') {
+                messageContent = `<img src="${msgData.url}" class="w-24 h-24 object-contain">`;
+            } else {
+                messageContent = msgData.text;
+            }
+            
+            msgEl.className = `flex flex-col ${isYou ? 'items-end' : 'items-start'}`;
+            msgEl.innerHTML = `<div class="p-2 rounded-lg max-w-[80%] ${isYou ? 'bg-gradient-to-r from-cyan-500 to-blue-600' : 'bg-gray-700'}">${messageContent}</div>`;
+            
+            dom.friendChatContainer.querySelector('#friendChatMessages').appendChild(msgEl);
+        };
+
+        const sendFriendMessage = async (type = 'text', content = null) => {
+            const input = dom.friendChatContainer.querySelector('#friendChatMessageInput');
+            const text = input.value.trim();
+            if ((type === 'text' && !text) && type !== 'sticker' && type !== 'gif' && type !== 'image') return;
+            
+            const recipientUid = dom.friendChatContainer.dataset.recipientUid;
+            const conversationId = dom.friendChatContainer.dataset.conversationId;
+            if (!recipientUid || !conversationId) return;
+
+            const messageData = {
+                senderId: auth.currentUser.uid,
+                recipientId: recipientUid,
+                timestamp: serverTimestamp(),
+                type: type,
+                text: type === 'text' ? text : null,
+                url: (type === 'image' || type === 'sticker' || type === 'gif') ? content : null,
+                read: false,
+            };
+
+            await addDoc(collection(db, 'directMessages', conversationId, 'messages'), messageData);
+            input.value = '';
+        };
+        
+        const handleFriendMediaUpload = async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const conversationId = dom.friendChatContainer.dataset.conversationId;
+            if (!conversationId) return;
+            
+            const filePath = `chat_images/${conversationId}/${Date.now()}_${file.name}`;
+            const storageRef = ref(storage, filePath);
+
+            try {
+                const snapshot = await uploadBytes(storageRef, file);
+                const imageUrl = await getDownloadURL(snapshot.ref);
+                await sendFriendMessage('image', imageUrl);
+            } catch (error) {
+                console.error("Error uploading image:", error);
+            } finally {
+                event.target.value = ''; // Reset input
+            }
+        };
+
+        const setupFriendChatPopup = () => {
+            dom.friendChatContainer.querySelector('#closeFriendChatBtn').onclick = () => {
+                dom.friendChatContainer.classList.add('translate-y-full');
+                if (currentFriendChatListener) currentFriendChatListener();
+            };
+            dom.friendChatContainer.querySelector('#sendFriendMessageBtn').onclick = () => sendFriendMessage('text');
+            dom.friendChatContainer.querySelector('#friendChatMessageInput').onkeypress = (e) => {
+                if(e.key === 'Enter') sendFriendMessage('text');
+            };
+            dom.friendChatContainer.querySelector('#friendMediaBtn').onclick = () => dom.friendMediaUploadInput.click();
+            dom.friendMediaUploadInput.onchange = handleFriendMediaUpload;
+            dom.friendChatContainer.querySelector('#minimizeFriendChatBtn').onclick = () => {
+                dom.friendChatContainer.classList.toggle('minimized');
+            };
+
+            // Friend Picker Logic
+            dom.friendPickerBtn.addEventListener('click', () => {
+                const isVisible = dom.friendPickerPanel.style.display === 'block';
+                dom.friendPickerPanel.style.display = isVisible ? 'none' : 'block';
+                if (!isVisible) {
+                    switchTab('friend-emoji', 'friend');
+                }
+            });
+
+            document.querySelectorAll('.friend-picker-tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    switchTab(btn.dataset.tab, 'friend');
+                });
+            });
+
+            let friendGifSearchTimeout;
+            document.getElementById('friend-gif-search-input').addEventListener('keyup', (e) => {
+                clearTimeout(friendGifSearchTimeout);
+                friendGifSearchTimeout = setTimeout(() => {
+                    fetchAndDisplayGifs(
+                        document.getElementById('friend-gif-grid'),
+                        e.target,
+                        dom.friendPickerPanel,
+                        (url) => sendFriendMessage('gif', url)
+                    );
+                }, 500);
+            });
+        };
+        
+        const blockUser = async (userIdToBlock, userName) => {
+            const currentUser = auth.currentUser;
+            if (!currentUser || currentUser.uid === userIdToBlock) return;
+
+            createModal('confirm-block-modal', `Block ${userName}?`,
+                `<p>You will no longer see messages from this user. They will not be notified that you have blocked them. Are you sure?</p>`,
+                [
+                    { id: 'btn-cancel-block', text: 'Cancel', classes: 'bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition' },
+                    {
+                        id: 'btn-confirm-block', text: 'Block User', classes: 'bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition',
+                        onClick: async () => {
+                            try {
+                                const blockRef = collection(db, "blockedUsers");
+                                await addDoc(blockRef, {
+                                    blocker: currentUser.uid,
+                                    blocked: userIdToBlock,
+                                    timestamp: serverTimestamp()
+                                });
+                                // Also remove any existing friendship or friend request
+                                const friendshipId = getConversationId(currentUser.uid, userIdToBlock);
+                                await deleteDoc(doc(db, "friendships", friendshipId));
+                                
+                                document.getElementById('view-profile-modal')?.remove(); // Close the profile modal
+                                createModal('block-success-modal', 'User Blocked', `<p>${userName} has been successfully blocked.</p>`, [{ id: 'ok-btn', text: 'OK', classes: 'bg-gray-700 p-2 rounded' }]);
+                            } catch (error) {
+                                console.error("Error blocking user:", error);
+                            }
+                        }
+                    }
+                ]
+            );
+        };
+
+        const reportUser = (userIdToReport, userName) => {
+            const currentUser = auth.currentUser;
+            if (!currentUser || currentUser.uid === userIdToReport) return;
+
+            createModal('report-user-modal', `Report ${userName}`, `
+                <div class="space-y-2">
+                    <label for="report-reason" class="text-sm font-medium text-slate-400">Please provide a reason for reporting this user:</label>
+                    <textarea id="report-reason" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 mt-1 h-24 focus:ring-fuchsia-500 focus:border-fuchsia-500" placeholder="e.g., spam, harassment, inappropriate content..."></textarea>
+                </div>
+            `, [
+                { id: 'btn-cancel-report', text: 'Cancel', classes: 'bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition' },
+                {
+                    id: 'btn-submit-report', text: 'Submit Report', classes: 'bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition',
+                    onClick: async () => {
+                        const reason = document.getElementById('report-reason').value.trim();
+                        if (!reason) {
+                            const reportModal = document.getElementById('report-user-modal');
+                            let errorEl = reportModal.querySelector('.error-message');
+                            if (!errorEl) {
+                                errorEl = document.createElement('p');
+                                errorEl.className = 'error-message text-red-400 text-sm mt-2';
+                                errorEl.textContent = 'A reason is required to submit a report.';
+                                reportModal.querySelector('.text-slate-300').appendChild(errorEl);
+                                setTimeout(() => errorEl.remove(), 3000);
+                            }
+                            return; 
+                        }
+                        try {
+                            const reportRef = collection(db, "reports");
+                            await addDoc(reportRef, {
+                                reporterId: currentUser.uid,
+                                reporterName: localStorage.getItem("micDropUsername") || "Anonymous",
+                                reportedId: userIdToReport,
+                                reportedName: userName,
+                                reason: reason,
+                                roomId: currentRoomId,
+                                roomName: currentRoomName,
+                                timestamp: serverTimestamp()
+                            });
+                             document.getElementById('view-profile-modal')?.remove(); // Close the profile modal
+                            document.getElementById('report-user-modal')?.remove();
+                            createModal('report-success-modal', 'Report Submitted', `<p>Thank you for your report. We will review the situation shortly.</p>`, [{ id: 'ok-btn', text: 'OK', classes: 'bg-gray-700 p-2 rounded' }]);
+                        } catch (error) {
+                            console.error("Error submitting report:", error);
+                        }
+                    },
+                    closesModal: false
+                }
+            ]);
+        };
+
+        window.viewUserProfile = async (uid, name, avatar) => {
+            const userDoc = await getDoc(doc(db, "users", uid));
+            const userData = userDoc.exists() ? userDoc.data() : { bio: 'No bio yet.' };
+            
+            const modal = createModal('view-profile-modal', `Profile: ${name}`, `
+                <div class="flex flex-col items-center">
+                    <img src="${avatar}" class="w-24 h-24 rounded-full mb-4 border-4 border-cyan-500">
+                    <p class="text-slate-400">${userData.bio || 'This user has no bio.'}</p>
+                </div>
+                <div id="view-profile-buttons" class="mt-4 flex flex-col gap-2">
+                    <!-- Buttons will be injected here -->
+                </div>
+            `, [
+                { id: 'btn-close-profile', text: 'Close', classes: 'bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition' }
+            ]);
+
+            const buttonContainer = modal.querySelector('#view-profile-buttons');
+            const currentUser = auth.currentUser;
+            if (currentUser && currentUser.uid !== uid) {
+                try {
+                    const friendshipId = getConversationId(currentUser.uid, uid);
+                    const friendshipRef = doc(db, "friendships", friendshipId);
+
+                    // **FIX:** Use a query to check friendship status to avoid permission errors
+                    const q = query(collection(db, "friendships"), where("users", "array-contains", currentUser.uid));
+                    const querySnapshot = await getDocs(q);
+                    let friendshipDoc = null;
+                    let friendshipData = null;
+
+                    querySnapshot.forEach(doc => {
+                        const data = doc.data();
+                        if (data.users.includes(uid)) {
+                            friendshipDoc = doc;
+                            friendshipData = data;
+                        }
+                    });
+
+                    let friendButtonHTML = '';
+                    if (friendshipDoc) {
+                        const status = friendshipData.status;
+                        if (status === 'friends') {
+                            friendButtonHTML = `<button class="w-full bg-gray-600 text-white font-bold py-2 px-4 rounded transition" disabled>✔️ Friends</button>`;
+                        } else if (status === 'pending') {
+                            friendButtonHTML = `<button class="w-full bg-gray-600 text-white font-bold py-2 px-4 rounded transition" disabled>⏳ Request Sent</button>`;
+                        }
+                    } else {
+                        friendButtonHTML = `<button id="btn-add-friend" class="w-full bg-gradient-to-r from-fuchsia-600 to-purple-700 text-white font-bold py-2 px-4 rounded transition">Add Friend</button>`;
+                    }
+
+                    let adminActionsHTML = '';
+                    if (currentUser.uid === currentRoomCreatorId) {
+                        adminActionsHTML = `<button id="btn-kick-user" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded transition">Kick User</button>`;
+                    }
+
+                    buttonContainer.innerHTML = `
+                        ${friendButtonHTML}
+                        <button id="btn-block-user" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-2 px-4 rounded transition">Block User</button>
+                        <button id="btn-report-user" class="w-full bg-red-800 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition">Report User</button>
+                        ${adminActionsHTML}
+                    `;
+
+                    // Add event listeners
+                    const addFriendBtn = document.getElementById('btn-add-friend');
+                    if (addFriendBtn) {
+                        addFriendBtn.onclick = async () => {
+                             await setDoc(friendshipRef, {
+                                users: [currentUser.uid, uid],
+                                status: "pending",
+                                requestedBy: currentUser.uid,
+                                uids: {
+                                    [currentUser.uid]: { username: localStorage.getItem("micDropUsername"), avatar: localStorage.getItem("micDropAvatar") },
+                                    [uid]: { username: name, avatar: avatar }
+                                }
+                            });
+                            addFriendBtn.textContent = '⏳ Request Sent';
+                            addFriendBtn.disabled = true;
+                        };
+                    }
+                    
+                    const kickBtn = document.getElementById('btn-kick-user');
+                    if (kickBtn) {
+                        kickBtn.onclick = () => kickUser(uid, name);
+                    }
+                    
+                    document.getElementById('btn-block-user').onclick = () => blockUser(uid, name);
+                    document.getElementById('btn-report-user').onclick = () => reportUser(uid, name);
+
+                } catch (error) {
+                    console.error("Error building profile buttons:", error);
+                    buttonContainer.innerHTML = `<p class="text-red-500">Could not load user actions.</p>`;
+                }
+            }
+        };
+        
+        const openProfileModal = async () => {
+             const user = auth.currentUser;
+             if (!user) return;
+             const userDocRef = doc(db, "users", user.uid);
+             const userDoc = await getDoc(userDocRef);
+             const userData = userDoc.exists() ? userDoc.data() : {};
+
+             createModal('edit-profile', 'Edit Your Profile', `
+                 <div class="space-y-4">
+                     <div>
+                         <label class="text-sm font-medium text-slate-400">Username</label>
+                         <input id="profileUsernameInput" type="text" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 mt-1 focus:ring-fuchsia-500 focus:border-fuchsia-500" value="${localStorage.getItem('micDropUsername') || ''}">
+                     </div>
+                      <div>
+                         <label class="text-sm font-medium text-slate-400">Bio</label>
+                         <textarea id="profileBioInput" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 mt-1 h-24 focus:ring-fuchsia-500 focus:border-fuchsia-500">${userData.bio || ''}</textarea>
+                     </div>
+                     <div>
+                         <label class="text-sm font-medium text-slate-400">Choose New Avatar</label>
+                         <div id="editAvatarGrid" class="grid grid-cols-5 gap-3 mt-2 p-2 bg-black/20 rounded-lg max-h-48 overflow-y-auto"></div>
+                     </div>
+                 </div>
+             `, [
+                 { id: 'btn-cancel-profile', text: 'Cancel', classes: 'bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition' },
+                 { id: 'btn-save-profile', text: 'Save', classes: 'bg-gradient-to-r from-fuchsia-600 to-purple-700 text-white font-bold py-2 px-4 rounded transition', onClick: saveProfile }
+             ]);
+             populateAvatarGrid('editAvatarGrid');
+        };
+
+        const populateAvatarGrid = (gridId) => {
+            const grid = document.getElementById(gridId);
+            if (!grid) return;
+            grid.innerHTML = '<p class="col-span-full text-center">Loading avatars...</p>';
+            
+            const avatarStyles = ["adventurer", "bottts", "micah", "initials", "fun-emoji", "pixel-art", "lorelei", "identicon", "miniavs", "open-peeps", "personas", "rings", "shapes", "thumbs"];
+            let avatarsHTML = '';
+            for(let i = 0; i < 50; i++) {
+                const style = avatarStyles[Math.floor(Math.random() * avatarStyles.length)];
+                const seed = Math.random().toString(36).substring(2, 15);
+                const avatarUrl = `https://api.dicebear.com/7.x/${style}/svg?seed=${seed}`;
+                avatarsHTML += `<img src="${avatarUrl}" class="avatar-option w-full aspect-square rounded-full cursor-pointer transition-all duration-200 border-2 border-transparent hover:border-fuchsia-500">`;
+            }
+            grid.innerHTML = avatarsHTML;
+
+            grid.addEventListener('click', (e) => {
+                if (e.target.classList.contains('avatar-option')) {
+                    grid.querySelectorAll('.avatar-option').forEach(el => el.classList.remove('selected-avatar'));
+                    e.target.classList.add('selected-avatar');
+                }
+            });
+        };
+        
+        const saveProfile = async () => {
+            const user = auth.currentUser;
+            if (!user) return;
+            
+            const newUsername = document.getElementById('profileUsernameInput').value.trim();
+            const newBio = document.getElementById('profileBioInput').value.trim();
+            const selectedAvatar = document.querySelector('#editAvatarGrid .selected-avatar');
+            const newAvatar = selectedAvatar ? selectedAvatar.src : localStorage.getItem('micDropAvatar');
+
+            if (!newUsername) {
+                createModal('error-modal', 'Error', 'Username cannot be empty.', [{id: 'ok-btn', text: 'OK', classes: 'bg-gray-700 p-2 rounded'}]);
+                return;
+            }
+
+            localStorage.setItem('micDropUsername', newUsername);
+            localStorage.setItem('micDropAvatar', newAvatar);
+            
+            const userDocRef = doc(db, "users", user.uid);
+            await updateDoc(userDocRef, {
+                username: newUsername,
+                avatar: newAvatar,
+                bio: newBio
+            });
+
+            if (document.getElementById('user-profile-icon')) {
+                document.getElementById('user-profile-icon').src = newAvatar;
+            }
+        };
+
+        const listenForFriendRequests = (userId) => {
+            const q = query(collection(db, "friendships"), where("users", "array-contains", userId), where("status", "==", "pending"));
+            onSnapshot(q, (snapshot) => {
+                friendRequests = [];
+                snapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    if (data.requestedBy !== userId) {
+                        const senderId = data.requestedBy;
+                        const senderData = data.uids[senderId];
+                        friendRequests.push({
+                            id: docSnap.id,
+                            fromUsername: senderData.username,
+                            fromAvatar: senderData.avatar
+                        });
+                    }
+                });
+                const dot = document.getElementById('notification-dot');
+                if (dot) dot.style.display = friendRequests.length > 0 ? 'block' : 'none';
+            });
+        };
+
+        const showFriendRequests = () => {
+             let requestsHTML = '<div class="space-y-3 max-h-96 overflow-y-auto p-1">';
+            if (friendRequests.length === 0) {
+                requestsHTML += '<p class="text-slate-500">No new friend requests.</p>';
+            } else {
+                friendRequests.forEach(req => {
+                    requestsHTML += `
+                        <div class="flex items-center justify-between gap-3 p-2 rounded-lg bg-gray-800/50">
+                            <div class="flex items-center gap-2">
+                                <img src="${req.fromAvatar}" class="w-10 h-10 rounded-full">
+                                <span class="font-semibold">${req.fromUsername}</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="bg-green-500 text-white text-xs font-bold py-1 px-2 rounded" onclick="window.acceptRequest('${req.id}')">Accept</button>
+                                <button class="bg-red-500 text-white text-xs font-bold py-1 px-2 rounded" onclick="window.rejectRequest('${req.id}')">Decline</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            requestsHTML += '</div>';
+            createModal('requests-modal', 'Friend Requests', requestsHTML, [{ id: 'btn-close-requests', text: 'Close', classes: 'bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition' }]);
+        };
+
+        window.acceptRequest = async (friendshipId) => {
+            const friendshipRef = doc(db, "friendships", friendshipId);
+            await updateDoc(friendshipRef, { status: "friends" });
+            document.getElementById('requests-modal')?.remove();
+        };
+
+        window.rejectRequest = async (friendshipId) => {
+            const friendshipRef = doc(db, "friendships", friendshipId);
+            await deleteDoc(friendshipRef);
+            document.getElementById('requests-modal')?.remove();
+        };
+
+        const listenForBlockedUsers = (userId) => {
+            const q = query(collection(db, "blockedUsers"), where("blocker", "==", userId));
+            onSnapshot(q, (snapshot) => {
+                blockedUserIds.clear();
+                snapshot.forEach((doc) => {
+                    blockedUserIds.add(doc.data().blocked);
+                });
+            });
+        };
+
+        const openAdminModal = () => {
+            createModal('admin-modal', 'Room Settings', '', [
+                { id: 'btn-delete-room', text: 'Delete Room', classes: 'bg-red-800 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition', onClick: () => confirmRoomDeletion(currentRoomId, currentRoomName) }
+            ]);
+        };
+
+        const confirmRoomDeletion = (roomId, roomName) => {
+            createModal('confirm-delete-modal', `Delete ${roomName}?`, 
+            `<p>Are you sure you want to permanently delete this room and all of its messages? This action cannot be undone.</p>`, 
+            [
+                { id: 'btn-cancel-delete', text: 'Cancel', classes: 'bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition' },
+                { id: 'btn-confirm-delete', text: 'Delete Room', classes: 'bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition', onClick: () => deleteRoom(roomId) }
+            ]);
+        };
+
+        const deleteRoom = async (roomId) => {
+            try {
+                const messagesRef = collection(db, 'rooms', roomId, 'messages');
+                const messagesSnapshot = await getDocs(messagesRef);
+                const batch = writeBatch(db);
+                messagesSnapshot.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                await batch.commit();
+                await deleteDoc(doc(db, 'rooms', roomId));
+                window.location.href = './rooms.html';
+            } catch (error) {
+                console.error("Error deleting room:", error);
+            }
+        };
+
+        const kickUser = async (userIdToKick, userName) => {
+            if (!currentRoomId) return;
+            const roomRef = doc(db, 'rooms', currentRoomId);
+            try {
+                await updateDoc(roomRef, {
+                    kickedUsers: arrayUnion(userIdToKick)
+                });
+                // Announce the kick in chat
+                await addDoc(collection(db, 'rooms', currentRoomId, 'messages'), {
+                    type: 'system',
+                    text: `${userName} has been kicked from the room.`,
+                    timestamp: serverTimestamp()
+                });
+            } catch (error) {
+                console.error("Error kicking user:", error);
+            }
+        };
+        
+        const handleGoogleLogin = () => {
+            const provider = new GoogleAuthProvider();
+            signInWithPopup(auth, provider)
+                .then(result => {
+                    const user = result.user;
+                    localStorage.setItem("micDropUsername", user.displayName);
+                    localStorage.setItem("micDropAvatar", user.photoURL);
+                    window.location.reload();
+                })
+                .catch(err => console.error("Google Sign-In Error:", err.message));
+        };
+        
+        const signOutUser = () => {
+            signOut(auth).then(() => {
+                localStorage.removeItem("micDropUsername");
+                localStorage.removeItem("micDropAvatar");
+                window.location.reload();
+            });
+        };
+        
+        const showInfoModal = (page) => {
+            let title = '';
+            let content = '';
+
+            if (page === 'privacy') {
+                title = 'Privacy Policy';
+                content = `
+                    <div class="text-left space-y-4 text-slate-300 text-sm">
+                        <p><strong>Last Updated:</strong> July 25, 2025</p>
+                        <p>Welcome to Mic Drop Arena ("we," "our," or "us"). We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our web application (the "Service").</p>
+                        <p>Please read this privacy policy carefully. If you do not agree with the terms of this privacy policy, please do not access the service.</p>
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">Information We Collect</h4>
+                        <p>We may collect information about you in a variety of ways, including: personal data you provide (username, avatar, messages), and derivative data collected automatically (IP address, browser type).</p>
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">Use of Your Information</h4>
+                        <p>We use your information to operate and maintain the Service, create and manage your account, enable user-to-user communications, and serve personalized advertisements through Google AdSense.</p>
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">Advertising and Google AdSense</h4>
+                        <p>We use Google AdSense to display ads. Google uses cookies to serve ads based on a user's prior visits. You may opt out of personalized advertising by visiting Google's Ads Settings.</p>
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">Contact Us</h4>
+                        <p>If you have any questions about this Privacy Policy, please contact us at: <a href="mailto:contact@roastbattlearena.com" class="text-cyan-400 hover:underline">contact@roastbattlearena.com</a></p>
+                    </div>
+                `;
+            } else if (page === 'terms') {
+                title = 'Terms of Service';
+                content = `
+                    <div class="text-left space-y-4 text-slate-300 text-sm">
+                        <p><strong>Last Updated:</strong> July 25, 2025</p>
+                        <p>By accessing or using Mic Drop Arena ("the Service"), you agree to be bound by these Terms of Service.</p>
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">User Conduct</h4>
+                        <p>You are solely responsible for your conduct and any content you post. You agree not to post content that is unlawful, harmful, harassing, or otherwise objectionable. We reserve the right to remove content and terminate accounts for any violation.</p>
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">Disclaimers</h4>
+                        <p>The Service is provided "AS IS". We disclaim all warranties and will not be liable for any damages arising from your use of the Service.</p>
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">Contact Us</h4>
+                        <p>If you have any questions about these Terms, please contact us at: <a href="mailto:contact@roastbattlearena.com" class="text-cyan-400 hover:underline">contact@roastbattlearena.com</a></p>
+                    </div>
+                `;
+            } else if (page === 'contact') {
+                title = 'Contact Us';
+                content = `
+                    <div class="text-left space-y-4 text-slate-300 text-sm">
+                        <p>For support, inquiries, or any other questions, please email us directly at: <a href="mailto:contact@roastbattlearena.com" class="text-cyan-400 hover:underline">contact@roastbattlearena.com</a></p>
+                    </div>
+                `;
+            }
+
+            createModal(`${page}-modal`, title, content, [{ id: `btn-close-${page}`, text: 'Close', classes: 'bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition' }]);
+        };
+
+
+        // --- EVENT LISTENERS ---
+        const togglePickerPanel = (pickerPanel) => {
+            const isVisible = pickerPanel.style.display === 'block';
+            pickerPanel.style.display = isVisible ? 'none' : 'block';
+            if (!isVisible) {
+                const defaultTab = pickerPanel.id === 'friend-picker-panel' ? 'friend-emoji' : 'emoji';
+                switchTab(defaultTab, pickerPanel.id === 'friend-picker-panel' ? 'friend' : 'main');
+            }
+        };
+
+        const switchTab = (tabName, context) => {
+            const prefix = context === 'friend' ? 'friend-' : '';
+            
+            // Hide all content panels in the current context
+            document.querySelectorAll(`.${prefix}picker-content-panel`).forEach(p => p.style.display = 'none');
+            // Reset all tab styles in the current context
+            document.querySelectorAll(`.${prefix}picker-tab-btn`).forEach(b => {
+                b.classList.remove('text-slate-300', 'border-fuchsia-500');
+                b.classList.add('text-slate-400', 'border-transparent');
+            });
+
+            // Activate the selected tab and panel
+            const targetTab = tabName.replace('friend-', '');
+            const tabBtn = document.querySelector(`[data-tab="${tabName}"]`);
+            const panel = document.getElementById(`${tabName}-panel`);
+
+            if (panel && tabBtn) {
+                panel.style.display = (targetTab === 'gif' || targetTab === 'friend-gif') ? 'flex' : 'grid';
+                tabBtn.classList.add('text-slate-300', 'border-fuchsia-500');
+                tabBtn.classList.remove('text-slate-400', 'border-transparent');
+            }
+
+            if (targetTab === 'gif') {
+                const grid = document.getElementById(`${prefix}gif-grid`);
+                const input = document.getElementById(`${prefix}gif-search-input`);
+                const parentPanel = document.getElementById(`${prefix}picker-panel`);
+                const sendFunction = context === 'friend' ? (url) => sendFriendMessage('gif', url) : (url) => sendMessage('gif', url);
+
+                if (grid.childElementCount === 0) {
+                    fetchAndDisplayGifs(grid, input, parentPanel, sendFunction);
+                }
+            }
+        };
+
+        dom.sendBtn.addEventListener('click', () => sendMessage('text'));
+        dom.messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage('text');
+        });
+        
+        dom.pickerBtn.addEventListener('click', () => togglePickerPanel(dom.pickerPanel));
+        document.querySelectorAll('.picker-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => switchTab(btn.dataset.tab, 'main'));
+        });
+
+        let gifSearchTimeout;
+        dom.gifSearchInput.addEventListener('keyup', (e) => {
+            clearTimeout(gifSearchTimeout);
+            gifSearchTimeout = setTimeout(() => {
+                fetchAndDisplayGifs(dom.gifGrid, e.target, dom.pickerPanel, (url) => sendMessage('gif', url));
+            }, 500); // Debounce search
+        });
+
+        dom.mediaBtn.addEventListener('click', () => dom.mediaUploadInput.click());
+        dom.mediaUploadInput.addEventListener('change', handleMediaUpload);
+        dom.sidebarToggle.onclick = () => toggleSidebar(true);
+        dom.sidebarClose.onclick = () => toggleSidebar(false);
+        dom.sidebarBackdrop.onclick = () => toggleSidebar(false);
+        dom.cancelReplyBtn.onclick = cancelReply;
+        
+        document.getElementById('privacy-link').addEventListener('click', (e) => {
+            e.preventDefault();
+            showInfoModal('privacy');
+        });
+        document.getElementById('terms-link').addEventListener('click', (e) => {
+            e.preventDefault();
+            showInfoModal('terms');
+        });
+        document.getElementById('contact-link').addEventListener('click', (e) => {
+            e.preventDefault();
+            showInfoModal('contact');
+        });
+
+
+        // --- INITIALIZATION ---
+        const initializeFirebase = () => {
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                storage = getStorage(app);
+                return true;
+            } catch (e) {
+                console.error("Firebase initialization failed:", e);
+                return false;
+            }
+        };
+
+        const main = () => {
+            if (!initializeFirebase()) return;
+            
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    initializeAppLogic(user);
+                } else {
+                    window.location.href = './portal.html'; // Redirect if not logged in
+                }
+            });
+        };
+
+        main();
+    </script>
+</body>
+</html>" and am asking a query about/based on this code below.
+Instructions to follow:
+  * Don't output/edit the document if the query is Direct/Simple. For example, if the query asks for a simple explanation, output a direct answer.
+  * Make sure to **edit** the document if the query shows the intent of editing the document, in which case output the entire edited document, **not just that section or the edits**.
+    * Don't output the same document/empty document and say that you have edited it.
+    * Don't change unrelated code in the document.
+  * Don't output  and  in your final response.
+  * Any references like "this" or "selected code" refers to the code between  and  tags.
+  * Just acknowledge my request in the introduction.
+  * Make sure to refer to the document as "Canvas" in your response.
+
+bro ad sense gave me this snippet - <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6618640317883565"
+     crossorigin="anonymous"></script>  and saying this To get your site ready to show ads, copy and paste this code between the <head></head> tags on each page of your site. what shall I d

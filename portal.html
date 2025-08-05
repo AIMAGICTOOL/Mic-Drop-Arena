@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mic Drop Arena</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-G6TD1HFH68"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-G6TD1HFH68');
+    </script>
+
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6618640317883565"
+     crossorigin="anonymous"></script>
+
+    <style>
+        /* Custom Styles for Neon Punk Theme */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0c0a09; /* A very dark, near-black */
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #171717;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d946ef; /* fuchsia-500 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #e879f9; /* fuchsia-400 */
+        }
+
+        /* Animation for typing indicator */
+        @keyframes bounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-4px); }
+        }
+        .typing-dots span {
+            animation: bounce 1.4s infinite ease-in-out;
+            background-color: #d946ef; /* fuchsia-500 */
+        }
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+        /* Sidebar transition */
+        #sidebar {
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        /* Modal backdrop blur */
+        .modal-backdrop {
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+
+        /* Glowing button effect */
+        .btn-glow-pink {
+            box-shadow: 0 0 6px theme('colors.fuchsia.500'), 0 0 12px theme('colors.fuchsia.600');
+        }
+        .btn-glow-cyan {
+             box-shadow: 0 0 6px theme('colors.cyan.500'), 0 0 12px theme('colors.cyan.600');
+        }
+        
+        /* Background pattern for main chat area */
+        #chat {
+            background-image: radial-gradient(theme('colors.fuchsia.500 / 0.1') 1px, transparent 0);
+            background-size: 25px 25px;
+        }
+        
+        /* Animation for modals */
+        @keyframes fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slide-up {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
+        .animate-slide-up { animation: slide-up 0.4s ease-out forwards; }
+        
+        .avatar-option.selected-avatar {
+          border-color: #d946ef !important; /* fuchsia-500 */
+          box-shadow: 0 0 15px #d946ef;
+          transform: scale(1.1);
+        }
+
+        /* Minimized Chat State */
+        #friendChatContainer.minimized #friendChatMessages,
+        #friendChatContainer.minimized #friendChatInputContainer,
+        #friendChatContainer.minimized #friend-picker-panel {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-stone-950 text-slate-200 antialiased">
+
+    <!-- App Wrapper -->
+    <div id="app-wrapper" class="relative min-h-screen w-full flex flex-col overflow-hidden">
+
+        <!-- Header -->
+        <header class="bg-stone-950/70 backdrop-blur-md p-3 flex justify-between items-center z-20 shadow-lg border-b border-fuchsia-500/30">
+            <button id="sidebar-toggle" class="relative p-2 rounded-md hover:bg-gray-800 text-slate-300 hover:text-fuchsia-400 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                </svg>
+                <span id="sidebar-notification-dot" class="absolute top-1 right-1 w-2.5 h-2.5 bg-cyan-400 rounded-full border-2 border-stone-950 hidden"></span>
+            </button>
+            <h1 class="text-xl font-black text-fuchsia-400 tracking-widest uppercase" style="text-shadow: 0 0 10px theme('colors.fuchsia.500');">Mic Drop</h1>
+            <div id="user-actions" class="flex items-center gap-2">
+                <!-- User Profile / Login Button will be injected here -->
+            </div>
+        </header>
+
+        
+       <!-- Main Content -->
+<main class="flex-1 flex flex-col p-2 sm:p-4 justify-center items-center max-w-2xl mx-auto w-full">
+    
+    <!-- Matchmaking UI -->
+    <div id="matchmaking-ui" class="text-center p-8 bg-black/30 rounded-2xl border-2 border-fuchsia-500/50 w-full max-w-md">
+        <h2 id="status-title" class="text-3xl font-bold mb-4 text-slate-100">Enter the Arena</h2>
+        <p id="status-text" class="text-slate-400 mb-8 min-h-[40px]">Click the button below to find a random opponent for a 1v1 roast battle.</p>
+        
+        <div id="waiting-animation-container" class="hidden my-8">
+            <div class="waiting-animation w-24 h-24 rounded-full mx-auto flex items-center justify-center bg-fuchsia-500/20">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-fuchsia-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            </div>
+        </div>
+
+        <button id="startBtn" class="w-full bg-gradient-to-r from-fuchsia-600 to-purple-700 text-white font-bold py-4 px-6 rounded-lg hover:opacity-90 transition transform hover:scale-105 btn-glow-pink text-lg" disabled>
+            Find Opponent
+        </button>
+         <button id="cancelBtn" class="w-full mt-4 bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg transition hidden">
+            Cancel Search
+        </button>
+    </div>
+
+    <!-- Ad Placeholder -->
+    <div id="ad-placeholder" class="w-full mt-8">
+         <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-6618640317883565"
+             data-ad-slot="YOUR_AD_SLOT_ID" <!-- Replace with your actual Ad Slot ID -->
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>
+             (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+    </div>
+</main>
+
+        <!-- Sidebar / Friends List -->
+        <div id="sidebar-backdrop" class="fixed inset-0 bg-black/60 z-30 hidden"></div>
+        <aside id="sidebar" class="fixed top-0 left-0 h-full w-72 bg-stone-900 shadow-2xl z-40 transform -translate-x-full flex flex-col border-r-2 border-fuchsia-500/50">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center">
+                <h2 class="text-lg font-bold text-fuchsia-500">Mic Drop Friends</h2>
+                <button id="sidebar-close" class="p-2 rounded-md hover:bg-gray-800 text-3xl leading-none">&times;</button>
+            </div>
+            <div id="friends-list" class="flex-1 overflow-y-auto p-2">
+                <!-- Friend items will be injected here -->
+            </div>
+            <div class="p-4 border-t border-gray-800">
+                <div id="profile-section" class="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-gray-800/50 transition-colors">
+                    <img class="profile-avatar w-10 h-10 rounded-full object-cover border-2 border-fuchsia-500" src="https://placehold.co/40x40/1c1917/ffffff?text=U" alt="Your Avatar">
+                    <span class="profile-name font-semibold">Username</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Friend Chat Popup -->
+        <div id="friendChatContainer" class="fixed bottom-0 right-4 w-[calc(100%-2rem)] max-w-sm bg-gray-900 rounded-t-lg shadow-2xl z-50 flex flex-col transition-transform translate-y-full border-t-2 border-x-2 border-cyan-500/50">
+            <div id="friendChatHeader" class="flex items-center justify-between p-2 bg-black/70 rounded-t-lg">
+                <div class="flex items-center gap-2 cursor-pointer">
+                    <img id="friendChatAvatar" src="" class="w-8 h-8 rounded-full object-cover">
+                    <span id="friendChatUsername" class="font-bold text-cyan-400"></span>
+                </div>
+                <div class="flex items-center">
+                     <button id="minimizeFriendChatBtn" class="p-2 text-lg hover:bg-gray-800 rounded-md">−</button>
+                    <button id="closeFriendChatBtn" class="p-2 text-lg hover:bg-gray-800 rounded-md">&times;</button>
+                </div>
+            </div>
+            <div id="friendChatMessages" class="h-80 overflow-y-auto p-3 flex flex-col gap-3"></div>
+            <!-- FRIEND CHAT PICKER -->
+            <div id="friend-picker-panel" class="bg-gray-800 border-t-2 border-gray-700 flex-shrink-0" style="display: none;">
+                <div class="flex border-b border-gray-700">
+                    <button data-tab="friend-emoji" class="friend-picker-tab-btn flex-1 p-2 text-center font-semibold text-slate-300 border-b-2 border-fuchsia-500">Emojis</button>
+                    <button data-tab="friend-sticker" class="friend-picker-tab-btn flex-1 p-2 text-center font-semibold text-slate-400 border-b-2 border-transparent hover:border-fuchsia-400 transition-colors">Stickers</button>
+                    <button data-tab="friend-gif" class="friend-picker-tab-btn flex-1 p-2 text-center font-semibold text-slate-400 border-b-2 border-transparent hover:border-fuchsia-400 transition-colors">GIFs</button>
+                </div>
+                <div class="relative">
+                    <div id="friend-emoji-panel" class="friend-picker-content-panel p-2 grid grid-cols-8 sm:grid-cols-10 gap-1 max-h-48 overflow-y-auto"></div>
+                    <div id="friend-sticker-panel" class="friend-picker-content-panel p-2 grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-48 overflow-y-auto" style="display: none;"></div>
+                    <div id="friend-gif-panel" class="friend-picker-content-panel p-2 flex flex-col max-h-60" style="display: none;">
+                        <input type="text" id="friend-gif-search-input" placeholder="Search GIPHY" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 mb-2 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                        <div id="friend-gif-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2 flex-1 overflow-y-auto"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="friendChatInputContainer" class="p-2 border-t border-gray-800 flex gap-2 items-center">
+                 <div class="relative flex-1">
+                     <div class="absolute left-3 top-1/2 -translate-y-1/2">
+                         <button id="mediaBtn" class="p-2 text-slate-400 hover:text-cyan-400 transition">
+                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                         </button>
+                     </div>
+                    <input type="text" id="friendChatMessageInput" placeholder="Say hi..." class="w-full bg-gray-800 border border-gray-700 rounded-lg py-2 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                     <div class="absolute right-3 top-1/2 -translate-y-1/2">
+                         <button id="friend-picker-btn" class="p-2 text-slate-400 hover:text-cyan-400 transition-colors">😊</button>
+                     </div>
+                 </div>
+                <button id="sendFriendMessageBtn" class="bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:opacity-90 transition">Send</button>
+            </div>
+        </div>
+        
+        <!-- Modals Container -->
+        <div id="modals-container"></div>
+        
+        <!-- Hidden file input for media uploads -->
+        <input type="file" id="mediaUploadInput" class="hidden" accept="image/*">
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="text-center p-4 text-xs text-slate-500 border-t border-gray-800/50">
+        <div class="flex justify-center gap-4 sm:gap-6">
+            <a href="#" id="privacy-link" class="hover:text-fuchsia-400 transition-colors">Privacy Policy</a>
+            <a href="#" id="terms-link" class="hover:text-fuchsia-400 transition-colors">Terms of Service</a>
+            <a href="#" id="contact-link" class="hover:text-fuchsia-400 transition-colors">Contact Us</a>
+        </div>
+        <p class="mt-2">&copy; 2025 Mic Drop Arena. All Rights Reserved.</p>
+    </footer>
+
+   <script type="module">
+    // Firebase Imports
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-auth.js";
+    import { getFirestore, doc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
+    // NEW: Import Firebase Functions
+    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-functions.js";
+
+    // --- GLOBAL STATE & DOM ELEMENTS ---
+    let app, auth, db, functions;
+    let findPartnerCallable; // This will hold our callable function
+    let matchListenerUnsubscribe = null; // To stop listening for a match once found
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyA9R0gkR1vYrVmBdXPKXPW0lvauRM9fAic",
+        authDomain: "roast-battle-arena-95827.firebaseapp.com",
+        projectId: "roast-battle-arena-95827",
+        storageBucket: "roast-battle-arena-95827.firebasestorage.app",
+        messagingSenderId: "1012348270876",
+        appId: "1:1012348270876:web:103e4aa45e4b05fec022d9"
+    };
+
+    const dom = {
+        statusTitle: document.getElementById('status-title'),
+        statusText: document.getElementById('status-text'),
+        startBtn: document.getElementById('startBtn'),
+        cancelBtn: document.getElementById('cancelBtn'),
+        waitingAnimation: document.getElementById('waiting-animation-container'),
+        modalsContainer: document.getElementById('modals-container'),
+    };
+
+    // --- HELPER FUNCTIONS ---
+    const createModal = (id, title, content, buttons, isClosable = true) => {
+        const existingModal = document.getElementById(id);
+        if(existingModal) existingModal.remove();
+
+        const closeButtonHTML = isClosable ? `<button class="absolute top-4 right-4 text-gray-500 hover:text-white text-3xl leading-none">&times;</button>` : '';
+        const modalHTML = `
+            <div id="${id}" class="fixed inset-0 bg-black/80 modal-backdrop z-[100] flex items-center justify-center p-4 animate-fade-in">
+                <div class="bg-gray-900 rounded-lg shadow-xl w-full max-w-lg p-6 border border-fuchsia-500/30 animate-slide-up relative">
+                    ${closeButtonHTML}
+                    <h3 class="text-xl font-bold mb-4 text-fuchsia-400">${title}</h3>
+                    <div class="text-slate-300 mb-6">${content}</div>
+                    <div class="flex justify-end gap-3">
+                        ${buttons.map(btn => `<button id="${btn.id}" class="${btn.classes}">${btn.text}</button>`).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+        dom.modalsContainer.insertAdjacentHTML('beforeend', modalHTML);
+        
+        const modalElement = document.getElementById(id);
+        const closeModal = () => modalElement.remove();
+
+        if (isClosable) {
+            modalElement.querySelector('.absolute.top-4').addEventListener('click', closeModal);
+        }
+
+        buttons.forEach(btn => {
+            document.getElementById(btn.id)?.addEventListener('click', () => {
+                if (btn.onClick) btn.onClick();
+                if(btn.closesModal !== false) closeModal();
+            });
+        });
+        return modalElement;
+    };
+    
+    // --- NEW MATCHMAKING LOGIC ---
+    
+    const startMatchmaking = async () => {
+        const user = auth.currentUser;
+        if (!user) {
+            createModal('auth-error', 'Error', 'You must be logged in to find a match.', [{id:'ok-btn', text:'OK', classes:'bg-gray-700 p-2 rounded'}]);
+            return;
+        }
+
+        // Update UI to show waiting state
+        dom.statusTitle.textContent = "Searching for Opponent...";
+        dom.statusText.textContent = "The mics are hot. We're finding you a worthy rival. This shouldn't take long.";
+        dom.startBtn.classList.add('hidden');
+        dom.cancelBtn.classList.remove('hidden');
+        dom.waitingAnimation.classList.remove('hidden');
+
+        try {
+            // Call the Cloud Function
+            const result = await findPartnerCallable({ 
+                username: localStorage.getItem("micDropUsername"), 
+                avatar: localStorage.getItem("micDropAvatar") 
+            });
+
+            const { status, sessionId } = result.data;
+
+            if (status === "matched") {
+                // --- MATCH FOUND IMMEDIATELY ---
+                console.log(`Immediate match found! Session ID: ${sessionId}`);
+                // Redirect to the battle page
+                window.location.href = `./battle.html?sessionId=${sessionId}`;
+
+            } else if (status === "waiting") {
+                // --- NO PARTNER FOUND, START LISTENING ---
+                console.log("No partner found. Now waiting and listening for a match...");
+                listenForMatch(user.uid);
+            }
+
+        } catch (error) {
+            console.error("Error calling findPartner function:", error);
+            createModal('function-error', 'Matchmaking Error', `Could not start matchmaking. Please try again. Error: ${error.message}`, [{id:'ok-btn', text:'OK', classes:'bg-gray-700 p-2 rounded'}]);
+            resetUI();
+        }
+    };
+
+    const listenForMatch = (uid) => {
+        const userDocRef = doc(db, "users", uid);
+
+        // onSnapshot creates a real-time listener
+        matchListenerUnsubscribe = onSnapshot(userDocRef, (docSnap) => {
+            if (docSnap.exists() && docSnap.data().activeSessionId) {
+                const sessionId = docSnap.data().activeSessionId;
+                console.log(`Partner found via listener! Starting chat in session: ${sessionId}`);
+                
+                // Stop listening now that we have a match
+                if (matchListenerUnsubscribe) {
+                    matchListenerUnsubscribe();
+                    matchListenerUnsubscribe = null;
+                }
+                
+                // Redirect to the battle page
+                window.location.href = `./battle.html?sessionId=${sessionId}`;
+            }
+        });
+    };
+
+    const cancelMatchmaking = async () => {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        // Stop the Firestore listener if it's active
+        if (matchListenerUnsubscribe) {
+            matchListenerUnsubscribe();
+            matchListenerUnsubscribe = null;
+            console.log("Stopped listening for a match.");
+        }
+
+        // Remove the user from the "waitingUsers" collection in Firestore
+        try {
+            const waitingUserRef = doc(db, "waitingUsers", user.uid);
+            await deleteDoc(waitingUserRef);
+            console.log("Removed user from the waiting pool.");
+        } catch (error) {
+            console.error("Error removing user from waiting pool:", error);
+        }
+        
+        resetUI();
+    };
+
+    const resetUI = () => {
+        dom.statusTitle.textContent = "Enter the Arena";
+        dom.statusText.textContent = "Click the button below to find a random opponent for a 1v1 roast battle.";
+        dom.startBtn.classList.remove('hidden');
+        dom.cancelBtn.classList.add('hidden');
+        dom.waitingAnimation.classList.add('hidden');
+    };
+
+    // --- INITIALIZATION ---
+    const initializeFirebase = () => {
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            functions = getFunctions(app); // Initialize Functions
+            findPartnerCallable = httpsCallable(functions, 'findPartner'); // Prepare the callable function
+            return true;
+        } catch (e) {
+            console.error("Firebase initialization failed:", e);
+            dom.statusTitle.textContent = "Connection Error";
+            dom.statusText.textContent = "Could not connect to services. Please refresh the page.";
+            return false;
+        }
+    };
+
+    const main = () => {
+        if (!initializeFirebase()) return;
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                const username = localStorage.getItem("micDropUsername");
+                const avatar = localStorage.getItem("micDropAvatar");
+                if (!username || !avatar) {
+                    // If the user has no profile, they can't start a match.
+                    dom.statusText.textContent = "Please set up your profile from the home page before entering the arena.";
+                } else {
+                    dom.startBtn.disabled = false;
+                }
+            } else {
+                // Sign in anonymously if not logged in
+                signInAnonymously(auth).catch(err => console.error("Anonymous sign-in failed:", err));
+            }
+        });
+
+        dom.startBtn.addEventListener("click", startMatchmaking);
+        dom.cancelBtn.addEventListener("click", cancelMatchmaking);
+    };
+
+    main();
+</script>
+</body>
+</html>
+?
