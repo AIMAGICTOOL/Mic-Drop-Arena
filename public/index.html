@@ -1,89 +1,321 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Welcome to Firebase Hosting</title>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mic Drop Arena - 1v1 Online Roast Battles & Group Chat Rooms</title>
+    <meta name="description" content="Enter the Mic Drop Arena for live 1v1 roast battles against random opponents, or create private and public group chat rooms to hang out with friends.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
 
-    <!-- update the version number as needed -->
-    <script defer src="/__/firebase/12.0.0/firebase-app-compat.js"></script>
-    <!-- include only the Firebase features as you need -->
-    <script defer src="/__/firebase/12.0.0/firebase-auth-compat.js"></script>
-    <script defer src="/__/firebase/12.0.0/firebase-database-compat.js"></script>
-    <script defer src="/__/firebase/12.0.0/firebase-firestore-compat.js"></script>
-    <script defer src="/__/firebase/12.0.0/firebase-functions-compat.js"></script>
-    <script defer src="/__/firebase/12.0.0/firebase-messaging-compat.js"></script>
-    <script defer src="/__/firebase/12.0.0/firebase-storage-compat.js"></script>
-    <script defer src="/__/firebase/12.0.0/firebase-analytics-compat.js"></script>
-    <script defer src="/__/firebase/12.0.0/firebase-remote-config-compat.js"></script>
-    <script defer src="/__/firebase/12.0.0/firebase-performance-compat.js"></script>
-    <!-- 
-      initialize the SDK after all desired features are loaded, set useEmulator to false
-      to avoid connecting the SDK to running emulators.
-    -->
-    <script defer src="/__/firebase/init.js?useEmulator=true"></script>
-
-    <style media="screen">
-      body { background: #ECEFF1; color: rgba(0,0,0,0.87); font-family: Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; }
-      #message { background: white; max-width: 360px; margin: 100px auto 16px; padding: 32px 24px; border-radius: 3px; }
-      #message h2 { color: #ffa100; font-weight: bold; font-size: 16px; margin: 0 0 8px; }
-      #message h1 { font-size: 22px; font-weight: 300; color: rgba(0,0,0,0.6); margin: 0 0 16px;}
-      #message p { line-height: 140%; margin: 16px 0 24px; font-size: 14px; }
-      #message a { display: block; text-align: center; background: #039be5; text-transform: uppercase; text-decoration: none; color: white; padding: 16px; border-radius: 4px; }
-      #message, #message a { box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24); }
-      #load { color: rgba(0,0,0,0.4); text-align: center; font-size: 13px; }
-      @media (max-width: 600px) {
-        body, #message { margin-top: 0; background: white; box-shadow: none; }
-        body { border-top: 16px solid #ffa100; }
-      }
-    </style>
-  </head>
-  <body>
-    <div id="message">
-      <h2>Welcome</h2>
-      <h1>Firebase Hosting Setup Complete</h1>
-      <p>You're seeing this because you've successfully setup Firebase Hosting. Now it's time to go build something extraordinary!</p>
-      <a target="_blank" href="https://firebase.google.com/docs/hosting/">Open Hosting Documentation</a>
-    </div>
-    <p id="load">Firebase SDK Loading&hellip;</p>
-
+    <!-- Google tag (gtag.js) for Google Analytics and Google Ads -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-KTMYLRDM1P"></script>
     <script>
-      document.addEventListener('DOMContentLoaded', function() {
-        const loadEl = document.querySelector('#load');
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
-        // // The Firebase SDK is initialized and available here!
-        //
-        // firebase.auth().onAuthStateChanged(user => { });
-        // firebase.database().ref('/path/to/ref').on('value', snapshot => { });
-        // firebase.firestore().doc('/foo/bar').get().then(() => { });
-        // firebase.functions().httpsCallable('yourFunction')().then(() => { });
-        // firebase.messaging().requestPermission().then(() => { });
-        // firebase.storage().ref('/path/to/ref').getDownloadURL().then(() => { });
-        // firebase.analytics(); // call to activate
-        // firebase.analytics().logEvent('tutorial_completed');
-        // firebase.performance(); // call to activate
-        //
-        // // 🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
 
-        try {
-          let app = firebase.app();
-          let features = [
-            'auth', 
-            'database', 
-            'firestore',
-            'functions',
-            'messaging', 
-            'storage', 
-            'analytics', 
-            'remoteConfig',
-            'performance',
-          ].filter(feature => typeof app[feature] === 'function');
-          loadEl.textContent = `Firebase SDK loaded with ${features.join(', ')}`;
-        } catch (e) {
-          console.error(e);
-          loadEl.textContent = 'Error loading the Firebase SDK, check the console.';
-        }
-      });
+      gtag('config', 'G-KTMYLRDM1P');
+      gtag('config', 'AW-17314196967');
     </script>
-  </body>
+    
+    <!-- Google AdSense Verification Script -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4290070425097333"
+     crossorigin="anonymous"></script>
+    
+    <style>
+        html, body {
+            height: 100%;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0c0a09;
+            background-image: radial-gradient(circle at top right, theme('colors.fuchsia.900' / 0.25), transparent 50%),
+                                  radial-gradient(circle at bottom left, theme('colors.cyan.900' / 0.25), transparent 50%);
+            display: flex;
+            flex-direction: column;
+        }
+        .card {
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            min-height: 380px; /* This helps control the card length */
+            display: flex; /* Ensure flex properties for internal alignment */
+            flex-direction: column; /* Stack content vertically */
+            justify-content: space-between; /* Distribute space to push button to bottom */
+        }
+        .card:hover {
+            transform: translateY(-10px);
+        }
+        .card-1:hover {
+            box-shadow: 0 0 30px theme('colors.fuchsia.500' / 0.7);
+        }
+        .card-2:hover {
+            box-shadow: 0 0 30px theme('colors.cyan.500' / 0.7);
+        }
+        .card-3:hover {
+            box-shadow: 0 0 30px theme('colors.amber.500' / 0.7);
+        }
+        .btn-glow-pink {
+            box-shadow: 0 0 8px theme('colors.fuchsia.500'), 0 0 16px theme('colors.fuchsia.600');
+        }
+        .btn-glow-cyan {
+            box-shadow: 0 0 8px theme('colors.cyan.500'), 0 0 16px theme('colors.cyan.600');
+        }
+        .btn-glow-amber {
+            box-shadow: 0 0 8px theme('colors.amber.500'), 0 0 16px theme('colors.amber.600');
+        }
+        .modal-backdrop {
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+        }
+        @keyframes fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slide-up {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
+        .animate-slide-up { animation: slide-up 0.4s ease-out forwards; }
+    </style>
+</head>
+<body class="bg-stone-950 text-slate-200 antialiased">
+
+    <div class="flex-grow flex flex-col items-center justify-center p-4">
+        
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <h1 class="text-5xl md:text-7xl font-black text-slate-100 tracking-wider">
+                <span class="text-fuchsia-400" style="text-shadow: 0 0 15px theme('colors.fuchsia.500');">MIC DROP</span>
+                <span class="text-cyan-400" style="text-shadow: 0 0 15px theme('colors.cyan.500');">ARENA</span>
+            </h1>
+            <p class="text-slate-400 mt-4 text-lg">Choose your stage.</p>
+            <p class="text-slate-300 mt-6 max-w-2xl mx-auto">Jump into a live online chat game of wits! Challenge strangers to a 1v1 roast battle, join public chat rooms, or create a private stage for you and your friends. It's all about quick comebacks and dropping the mic.</p>
+            <link rel="icon" type="image/png" href="/favicon.png">
+        </header>
+
+        <!-- Selection Cards -->
+        <div class="w-full max-w-6xl grid grid-cols-1 md:grid-cols-3 gap-8">
+            
+            <!-- Card 1: 1v1 Arena -->
+            <div class="card card-1 bg-black/30 border-2 border-fuchsia-500/50 rounded-2xl p-8 flex flex-col items-center text-center">
+                <div class="mb-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 text-fuchsia-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                </div>
+                <h2 class="text-3xl font-bold mb-3">1v1 Arena</h2>
+                <p class="text-slate-400 mb-8">Face off against a random opponent in a fast-paced battle of wits. Quick matches, instant glory.</p>
+                <a href="./portal.html" class="w-full bg-gradient-to-r from-fuchsia-600 to-purple-700 text-white font-bold py-4 px-6 rounded-lg hover:opacity-90 transition transform hover:scale-105 btn-glow-pink text-lg">
+                    Enter Arena
+                </a>
+            </div>
+
+            <!-- Card 2: Group Rooms -->
+            <div class="card card-2 bg-black/30 border-2 border-cyan-500/50 rounded-2xl p-8 flex flex-col items-center text-center">
+                <div class="mb-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283-.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                </div>
+                <h2 class="text-3xl font-bold mb-3">Group Rooms</h2>
+                <p class="text-slate-400 mb-8">Join public channels or create private, password-protected rooms to chat with friends and communities.</p>
+                <a href="./rooms.html" class="w-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold py-4 px-6 rounded-lg hover:opacity-90 transition transform hover:scale-105 btn-glow-cyan text-lg">
+                    Browse Rooms
+                </a>
+            </div>
+            
+            <!-- Card 3: Blog & News -->
+            <div class="card card-3 bg-black/30 border-2 border-amber-500/50 rounded-2xl p-8 flex flex-col items-center text-center">
+                <div class="mb-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" /></svg>
+                </div>
+                <h2 class="text-3xl font-bold mb-3">Blog & News</h2>
+                <p class="text-slate-400 mb-8">Read the latest updates, battle tips, and community highlights from the Mic Drop Arena.</p>
+                <a href="./blog.html" class="w-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold py-4 px-6 rounded-lg hover:opacity-90 transition transform hover:scale-105 btn-glow-amber text-lg">
+                    Read Now
+                </a>
+            </div>
+
+        </div>
+    </div>
+    
+    <div id="modals-container"></div>
+
+    <!-- Footer -->
+    <footer class="text-center p-4 text-xs text-slate-500 border-t border-gray-800/50 flex-shrink-0">
+        <div class="flex justify-center gap-4 sm:gap-6">
+            <a href="#" id="privacy-link" class="hover:text-fuchsia-400 transition-colors">Privacy Policy</a>
+            <a href="#" id="terms-link" class="hover:text-fuchsia-400 transition-colors">Terms of Service</a>
+            <a href="#" id="contact-link" class="hover:text-fuchsia-400 transition-colors">Contact Us</a>
+        </div>
+        <p class="mt-2">&copy; 2025 Mic Drop Arena. All Rights Reserved.</p>
+    </footer>
+    
+    <script type="module">
+        const createModal = (id, title, content, buttons, isClosable = true) => {
+            const existingModal = document.getElementById(id);
+            if(existingModal) existingModal.remove();
+
+            const closeButtonHTML = isClosable ? `<button class="absolute top-4 right-4 text-gray-500 hover:text-white text-3xl leading-none">&times;</button>` : '';
+            const modalHTML = `
+                <div id="${id}" class="fixed inset-0 bg-black/80 modal-backdrop z-[100] flex items-center justify-center p-4 animate-fade-in">
+                    <div class="bg-gray-900 rounded-lg shadow-xl w-full max-w-lg p-6 border border-fuchsia-500/30 animate-slide-up relative">
+                        ${closeButtonHTML}
+                        <h3 class="text-xl font-bold mb-4 text-fuchsia-400" style="text-shadow: 0 0 5px theme('colors.fuchsia.500');">${title}</h3>
+                        <div class="text-slate-300 mb-6 max-h-[60vh] overflow-y-auto pr-2">${content}</div>
+                        <div class="flex justify-end gap-3">
+                            ${buttons.map(btn => `<button id="${btn.id}" class="${btn.classes}">${btn.text}</button>`).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('modals-container').insertAdjacentHTML('beforeend', modalHTML);
+            
+            const modalElement = document.getElementById(id);
+            const closeModal = () => modalElement.remove();
+
+            if (isClosable) {
+                modalElement.querySelector('.absolute.top-4').addEventListener('click', closeModal);
+            }
+
+            buttons.forEach(btn => {
+                const btnEl = document.getElementById(btn.id);
+                if (btnEl) {
+                    btnEl.addEventListener('click', () => {
+                        if (btn.onClick) btn.onClick();
+                        if(btn.closesModal !== false) {
+                            closeModal();
+                        }
+                    });
+                }
+            });
+            
+            return modalElement;
+        };
+
+        const showInfoModal = (page) => {
+            let title = '';
+            let content = '';
+
+            if (page === 'privacy') {
+                title = 'Privacy Policy';
+                content = `
+                    <div class="text-left space-y-4 text-slate-300 text-sm">
+                        <p><strong>Last Updated:</strong> July 25, 2025</p>
+                        <p>Welcome to Mic Drop Arena ("we," "our," or "us"). We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our web application (the "Service").</p>
+                        <p>Please read this privacy policy carefully. If you do not agree with the terms of this privacy policy, please do not access the service.</p>
+                        
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">1. Information We Collect</h4>
+                        <p>We may collect information about you in a variety of ways:</p>
+                        <ul class="list-disc list-inside space-y-2 pl-4">
+                            <li><strong>Information You Provide to Us:</strong>
+                                <ul class="list-disc list-inside space-y-1 pl-6">
+                                    <li><strong>Account Information:</strong> When you register using Google, we collect your name, email address, and profile picture. If you register anonymously, a unique user ID is created.</li>
+                                    <li><strong>Profile Information:</strong> We collect the username, avatar, and bio you choose to display on your profile.</li>
+                                    <li><strong>User Content:</strong> We collect the chat messages, images, friend requests, user reports, and block actions you generate while using the Service.</li>
+                                </ul>
+                            </li>
+                            <li><strong>Information We Collect Automatically:</strong>
+                                <ul class="list-disc list-inside space-y-1 pl-6">
+                                    <li><strong>Log and Usage Data:</strong> Like most websites, we may log information such as your IP address, browser type, operating system, and access times.</li>
+                                    <li><strong>Cookies and Similar Technologies:</strong> We use cookies to operate and administer our Service, and to improve your experience. A cookie is a piece of information sent to your browser that allows our site to remember information about your session.</li>
+                                </ul>
+                            </li>
+                        </ul>
+
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">2. How We Use Your Information</h4>
+                        <p>We use the information we collect to:</p>
+                        <ul class="list-disc list-inside space-y-1 pl-4">
+                            <li>Provide, operate, and maintain our Service.</li>
+                            <li>Create and manage your account and profile.</li>
+                            <li>Enable user-to-user communications and interactions.</li>
+                            <li>Monitor and analyze usage to improve the Service.</li>
+                            <li>Enforce our Terms of Service and other policies.</li>
+                            <li>Respond to your comments and questions and provide customer service.</li>
+                            <li>Serve personalized advertisements through Google AdSense.</li>
+                        </ul>
+                        
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">3. Advertising and Google AdSense</h4>
+                        <p>We use Google AdSense, a third-party advertising service, to display ads on our Service. Google uses cookies to serve ads based on a user's prior visits to our website or other websites.</p>
+                        <ul class="list-disc list-inside space-y-1 pl-4">
+                            <li>Google's use of advertising cookies enables it and its partners to serve ads to your users based on their visit to your sites and/or other sites on the Internet.</li>
+                            <li>Users may opt out of personalized advertising by visiting <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:underline">Ads Settings</a>.</li>
+                            <li>For more information on how Google collects and uses data, please review their policies: <a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:underline">How Google uses information from sites or apps that use our services</a>.</li>
+                        </ul>
+                        
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">4. Children's Privacy</h4>
+                        <p>Our Service is not intended for individuals under the age of 13. We do not knowingly collect personal information from children under 13. If we become aware that we have collected personal information from a child under 13, we will take steps to delete such information.</p>
+
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">5. Contact Us</h4>
+                        <p>If you have any questions about this Privacy Policy, please contact us at: <a href="mailto:contact@roastbattlearena.com" class="text-cyan-400 hover:underline">contact@roastbattlearena.com</a></p>
+                    </div>
+                `;
+            } else if (page === 'terms') {
+                title = 'Terms of Service';
+                content = `
+                    <div class="text-left space-y-4 text-slate-300 text-sm">
+                        <p><strong>Last Updated:</strong> July 25, 2025</p>
+                        <p>These Terms of Service ("Terms") govern your access to and use of the Mic Drop Arena web application (the "Service"), operated by <strong>Roast Battle Arena</strong>. By accessing or using the Service, you agree to be bound by these Terms.</p>
+
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">1. User Accounts</h4>
+                        <p>You are responsible for safeguarding your account and for any activities or actions under your account. You must notify us immediately upon becoming aware of any breach of security or unauthorized use of your account.</p>
+
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">2. User Conduct and Content</h4>
+                        <p>You are solely responsible for your conduct and any data, text, files, information, usernames, images, graphics, photos, profiles, and other content or materials (collectively, "Content") that you submit, post, or display on or via the Service.</p>
+                        <p>You agree that you will not post Content that:</p>
+                        <ul class="list-disc list-inside space-y-1 pl-4">
+                            <li>Is unlawful, harmful, threatening, abusive, harassing, defamatory, vulgar, obscene, or is otherwise objectionable.</li>
+                            <li>Constitutes hate speech, promotes discrimination, or is derogatory towards any individual or group on the basis of race, gender, religion, sexual orientation, or any other protected characteristic.</li>
+                            <li>Infringes any patent, trademark, trade secret, copyright, or other proprietary rights of any party.</li>
+                            <li>Contains software viruses or any other computer code, files, or programs designed to interrupt, destroy, or limit the functionality of any computer software or hardware.</li>
+                            <li>Impersonates any person or entity, or falsely states or otherwise misrepresents your affiliation with a person or entity.</li>
+                        </ul>
+
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">3. Moderation and Enforcement</h4>
+                        <p>We reserve the right, but are not obligated, to monitor, review, or remove Content at our sole discretion and at any time and for any reason, without notice to you. We also reserve the right to suspend or terminate user accounts that violate these Terms.</p></li>
+                        
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">4. Disclaimers and Limitation of Liability</h4>
+                        <p>THE SERVICE IS PROVIDED ON AN "AS IS" AND "AS AVAILABLE" BASIS. TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW, WE DISCLAIM ALL WARRANTIES, EXPRESS OR IMPLIED, IN CONNECTION WITH THE SERVICE AND YOUR USE THEREOF.</p>
+                        <p>IN NO EVENT WILL WE OR OUR DIRECTORS, EMPLOYEES, OR AGENTS BE LIABLE TO YOU OR ANY THIRD PARTY FOR ANY DIRECT, INDIRECT, CONSEQUENTIAL, EXEMPLARY, INCIDENTAL, SPECIAL, OR PUNITIVE DAMAGES ARISING FROM YOUR USE OF THE SERVICE.</p>
+
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">5. Governing Law</h4>
+                        <p>These Terms shall be governed and construed in accordance with the laws of India, without regard to its conflict of law provisions.</p>
+
+                        <h4 class="font-bold text-lg text-fuchsia-400 mt-4">6. Contact Us</h4>
+                        <p>If you have any questions about these Terms, please contact us at: <a href="mailto:contact@roastbattlearena.com" class="text-cyan-400 hover:underline">contact@roastbattlearena.com</a></p>
+                    </div>
+                `;
+            } else if (page === 'contact') {
+                title = 'Contact Us';
+                content = `
+                    <div class="text-left space-y-4 text-slate-300 text-sm">
+                        <p>We'd love to hear from you! Whether you have a question about features, a bug report, or feedback to share, please feel free to reach out.</p>
+                        <p>For support, inquiries, or any other questions, please email us directly at:</p>
+                        <p class="text-center my-4">
+                            <a href="mailto:contact@roastbattlearena.com" class="text-cyan-400 text-lg font-bold hover:underline">contact@roastbattlearena.com</a>
+                        </p>
+                        <p>We do our best to respond to all inquiries within 48 business hours.</p>
+                    </div>
+                `;
+            }
+
+            createModal(`${page}-modal`, title, content, [{ id: `btn-close-${page}`, text: 'Close', classes: 'bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition' }]);
+        };
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('privacy-link').addEventListener('click', (e) => {
+                e.preventDefault();
+                showInfoModal('privacy');
+            });
+            document.getElementById('terms-link').addEventListener('click', (e) => {
+                e.preventDefault();
+                showInfoModal('terms');
+            });
+            document.getElementById('contact-link').addEventListener('click', (e) => {
+                e.preventDefault();
+                showInfoModal('contact');
+            });
+        });
+    </script>
+</body>
 </html>
+ - portal.h
