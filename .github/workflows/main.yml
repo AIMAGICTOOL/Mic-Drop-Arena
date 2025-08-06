@@ -23,8 +23,7 @@ jobs:
       - name: Install dependencies for functions
         # Explicitly tell npm install where to find package.json
         run: npm install --prefix functions
-        # The working-directory is no longer strictly needed here, but kept for clarity
-        # working-directory: ./functions 
 
       - name: Deploy to Firebase
-        run: firebase deploy --token ${{ secrets.FIREBASE_TOKEN }}
+        # Specify the Firebase project ID for deployment
+        run: firebase deploy --project roast-battle-arena-95827 --token ${{ secrets.FIREBASE_TOKEN }}
